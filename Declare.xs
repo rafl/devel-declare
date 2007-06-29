@@ -9,6 +9,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DD_DEBUG 0
+
+#ifdef DD_DEBUG
+#define DD_DEBUG_S printf("Buffer: %s\n", s);
+#else
+#define DD_DEBUG_S
+#endif
+
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
 
@@ -54,7 +62,9 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
   stash = GvSTASH(kGVOP_gv);
 
-  /* printf("Checking GV %s -> %s\n", HvNAME(stash), GvNAME(kGVOP_gv)); */
+#ifdef DD_DEBUG
+  printf("Checking GV %s -> %s\n", HvNAME(stash), GvNAME(kGVOP_gv));
+#endif
 
   is_declarator = get_hv("Devel::Declare::declarators", FALSE);
 
@@ -77,19 +87,35 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
   s = PL_bufptr; /* copy the current buffer pointer */
 
+  DD_DEBUG_S
+
+#ifdef DD_DEBUG
+  printf("PL_tokenbuf: %s", PL_tokenbuf);
+#endif
+
+  /*
+   *   buffer will be at the beginning of the declarator, -unless- the
+   *   declarator is at EOL in which case it'll be the next useful line
+   *   so we don't short-circuit out if we don't find the declarator
+   */
+
   while (s < PL_bufend && isSPACE(*s)) s++;
   if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
     s += strlen(PL_tokenbuf);
-  else
-    return o;
+
+  DD_DEBUG_S
 
   /* find next word */
 
   s = skipspace(s);
 
+  DD_DEBUG_S
+
   /* 0 in arg 4 is allow_package - not trying that yet :) */
 
   s = scan_word(s, tmpbuf, sizeof tmpbuf, 0, &len);
+
+  DD_DEBUG_S
 
   if (len) {
     cb_args[0] = HvNAME(stash);

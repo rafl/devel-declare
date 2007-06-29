@@ -21,9 +21,16 @@
 
 #define DPTR2FPTR(t,p) ((t)PTR2nat(p))  /* data pointer to function pointer */
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
+#define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
 #define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),
 #define Newx(v,n,t) (v = (MEM_WRAP_CHECK_(n,t) (t*)safemalloc((MEM_SIZE)((n)*sizeof(t)))))
 
+/* On MacOS, respect nonbreaking spaces */
+#ifdef MACOS_TRADITIONAL
+#define SPACE_OR_TAB(c) ((c)==' '||(c)=='\312'||(c)=='\t')
+#else
+#define SPACE_OR_TAB(c) ((c)==' '||(c)=='\t')
+#endif
 
 #define LEX_NORMAL    10 /* normal code (ie not within "...")     */
 #define LEX_INTERPNORMAL   9 /* code within a string, eg "$foo[$x+1]" */

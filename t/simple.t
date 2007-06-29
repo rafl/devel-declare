@@ -10,9 +10,21 @@ sub method {
 
 use Devel::Declare 'method';
 
+my ($args1, $args2);
+
 method bar {
-  my $str = join(', ', @_);
-  is($str, 'main, baz, quux', 'Method args ok');
+  $args1 = join(', ', @_);
 };
 
-__PACKAGE__->bar(qw(baz quux));
+method # blather
+  baz
+  # whee
+{
+  $args2 = join(', ', @_);
+};
+
+__PACKAGE__->bar(qw(1 2));
+__PACKAGE__->baz(qw(3 4));
+
+is($args1, 'main, 1, 2', 'Method bar args ok');
+is($args2, 'main, 3, 4', 'Method baz args ok');
