@@ -1,11 +1,11 @@
-#define PERL_DECL_PROT
+#define PERL_IN_TOKE_C
 #define PERL_CORE
 #define PERL_NO_GET_CONTEXT
-#include "/home/matthewt/tmp/perl-5.8.8/toke.c"
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 #undef printf
+#include "stolen_chunk_of_toke.c"
 #include <stdio.h>
 #include <string.h>
 
