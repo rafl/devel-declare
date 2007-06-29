@@ -6,15 +6,27 @@ use 5.008001;
 
 our $VERSION = 0.001000;
 
-use vars qw(%declarators);
+# mirrored in Declare.xs as DD_HANDLE_*
+
+use constant DECLARE_NAME => 1;
+use constant DECLARE_PROTO => 2;
+
+use vars qw(%declarators %declarator_handlers);
 use base qw(DynaLoader);
 
 bootstrap Devel::Declare;
 
 sub import {
-  my ($class, @args) = @_;
+  my ($class, %args) = @_;
   my $target = caller;
-  $class->setup_for($target => \@args);
+  if (@_ == 1) { # "use Devel::Declare;"
+    no strict 'refs';
+    foreach my $name (qw(DECLARE_NAME DECLARE_PROTO)) {
+      *{"${target}::${name}"} = *{"${name}"};
+    }
+  } else {
+    $class->setup_for($target => \%args);
+  }
 }
 
 sub unimport {
@@ -26,28 +38,67 @@ sub unimport {
 sub setup_for {
   my ($class, $target, $args) = @_;
   setup();
-  $declarators{$target}{$_} = 1 for @$args;
+  foreach my $key (keys %$args) {
+    my $info = $args->{$key};
+    my ($flags, $sub);
+    if (ref($info) eq 'ARRAY') {
+      ($flags, $sub) = @$info;
+    } elsif (ref($info) eq 'CODE') {
+      $flags = DECLARE_NAME;
+      $sub = $info;
+    } else {
+      die "Info for sub ${key} must be [ \$flags, \$sub ] or \$sub";
+    }
+    $declarators{$target}{$key} = $flags;
+    $declarator_handlers{$target}{$key} = $sub;
+  }
 }
 
 sub teardown_for {
   my ($class, $target) = @_;
   delete $declarators{$target};
+  delete $declarator_handlers{$target};
   teardown();
 }
 
 my $temp_pack;
 my $temp_name;
+my $temp_save;
 
 sub init_declare {
-  my ($pack, $use, $name) = @_;
-  no strict 'refs';
-  *{"${pack}::${name}"} = sub (&) { ($pack, $name, $_[0]); };
-  ($temp_pack, $temp_name) = ($pack, $name);
+  my ($pack, $use, $name, $proto) = @_;
+  my ($name_h, $XX_h) = $declarator_handlers{$pack}{$use}->(
+                            $pack, $use, $name, $proto
+                        );
+  ($temp_pack, $temp_name, $temp_save) = ($pack, [], []);
+  if ($name) {
+    push(@$temp_name, $name);
+    no strict 'refs';
+    push(@$temp_save, \&{"${pack}::${name}"});
+    no warnings 'redefine';
+    no warnings 'prototype';
+    *{"${pack}::${name}"} = $name_h;
+  }
+  if ($XX_h) {
+    push(@$temp_name, 'X');
+    no strict 'refs';
+    push(@$temp_save, \&{"${pack}::X"});
+    no warnings 'redefine';
+    no warnings 'prototype';
+    *{"${pack}::X"} = $XX_h;
+  }
 }
 
 sub done_declare {
   no strict 'refs';
-  delete ${"${temp_pack}::"}{$temp_name};
+  my $name = pop(@{$temp_name||[]});
+  die "done_declare called with no temp_name stack" unless defined($name);
+  my $saved = pop(@$temp_save);
+  delete ${"${temp_pack}::"}{$name};
+  if ($saved) {
+    no warnings 'prototype';
+    *{"${temp_pack}::${name}"} = $saved;
+  }
 }
 
 =head1 NAME

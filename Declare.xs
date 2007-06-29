@@ -11,6 +11,9 @@
 
 #define DD_DEBUG 0
 
+#define DD_HANDLE_NAME 1
+#define DD_HANDLE_PROTO 2
+
 #ifdef DD_DEBUG
 #define DD_DEBUG_S printf("Buffer: %s\n", s);
 #else
@@ -34,21 +37,25 @@ static int in_declare = 0;
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   OP* kid;
   char* s;
+  char* save_s;
   char tmpbuf[sizeof PL_tokenbuf];
-  STRLEN len;
+  char found_name[sizeof PL_tokenbuf];
+  char* found_proto = NULL;
+  STRLEN len = 0;
   HV *stash;
   HV* is_declarator;
   SV** is_declarator_pack_ref;
   HV* is_declarator_pack_hash;
   SV** is_declarator_flag_ref;
-  char* cb_args[4];
+  int dd_flags;
+  char* cb_args[5];
 
   o = dd_old_ck_rv2cv(aTHX_ o); /* let the original do its job */
 
   if (in_declare) {
     cb_args[0] = NULL;
     call_argv("Devel::Declare::done_declare", G_VOID|G_DISCARD, cb_args);
-    in_declare = 0;
+    in_declare--;
     return o;
   }
 
@@ -82,15 +89,25 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   is_declarator_flag_ref = hv_fetch(is_declarator_pack_hash, GvNAME(kGVOP_gv),
                                 strlen(GvNAME(kGVOP_gv)), FALSE);
 
-  if (!is_declarator_flag_ref || !SvTRUE(*is_declarator_flag_ref))
+  /* requires SvIOK as well as TRUE since flags not being an int is useless */
+
+  if (!is_declarator_flag_ref
+        || !SvIOK(*is_declarator_flag_ref) 
+        || !SvTRUE(*is_declarator_flag_ref))
     return o;
+
+  dd_flags = SvIVX(*is_declarator_flag_ref);
+
+#ifdef DD_DEBUG
+  printf("dd_flags are: %i\n", dd_flags);
+#endif
 
   s = PL_bufptr; /* copy the current buffer pointer */
 
   DD_DEBUG_S
 
 #ifdef DD_DEBUG
-  printf("PL_tokenbuf: %s", PL_tokenbuf);
+  printf("PL_tokenbuf: %s\n", PL_tokenbuf);
 #endif
 
   /*
@@ -105,25 +122,70 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
   DD_DEBUG_S
 
-  /* find next word */
+  if (dd_flags & DD_HANDLE_NAME) {
 
-  s = skipspace(s);
+    /* find next word */
 
-  DD_DEBUG_S
+    s = skipspace(s);
 
-  /* 0 in arg 4 is allow_package - not trying that yet :) */
+    DD_DEBUG_S
 
-  s = scan_word(s, tmpbuf, sizeof tmpbuf, 0, &len);
+    /* 0 in arg 4 is allow_package - not trying that yet :) */
 
-  DD_DEBUG_S
+    s = scan_word(s, tmpbuf, sizeof tmpbuf, 0, &len);
 
-  if (len) {
+    DD_DEBUG_S
+
+    if (len) {
+      strcpy(found_name, tmpbuf);
+#ifdef DD_DEBUG
+      printf("Found %s\n", found_name);
+#endif
+    }
+  }
+
+  if (dd_flags & DD_HANDLE_PROTO) {
+
+    s = skipspace(s);
+
+    if (*s == '(') { /* found a prototype-ish thing */
+      save_s = s;
+      s = scan_str(s, FALSE, FALSE); /* no keep_quoted, no keep_delims */
+      if (SvPOK(PL_lex_stuff)) {
+#ifdef DD_DEBUG
+        printf("Found proto %s\n", SvPVX(PL_lex_stuff));
+#endif
+        found_proto = SvPVX(PL_lex_stuff);
+        *save_s++ = '=';
+        *save_s++ = 'X';
+        while (save_s < s) {
+          *save_s++ = ' ';
+        }
+#ifdef DD_DEBUG
+        printf("Curbuf %s\n", PL_bufptr);
+#endif
+      }
+    }
+  }
+
+  if (len || found_proto) {
+    if (!len)
+      found_name[0] = 0;
+#ifdef DD_DEBUG
+  printf("Calling init_declare");
+#endif
     cb_args[0] = HvNAME(stash);
     cb_args[1] = GvNAME(kGVOP_gv);
-    cb_args[2] = tmpbuf;
-    cb_args[3] = NULL;
+    cb_args[2] = found_name;
+    cb_args[3] = found_proto;
+    cb_args[4] = NULL;
     call_argv("Devel::Declare::init_declare", G_VOID|G_DISCARD, cb_args);
-    in_declare = 1;
+    if (len && found_proto)
+      in_declare = 2;
+    else
+      in_declare = 1;
+    if (found_proto)
+      PL_lex_stuff = Nullsv;
   }
 
   return o;

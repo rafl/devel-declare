@@ -24,6 +24,13 @@
 #define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
 #define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),
 #define Newx(v,n,t) (v = (MEM_WRAP_CHECK_(n,t) (t*)safemalloc((MEM_SIZE)((n)*sizeof(t)))))
+#define SvPVX_const(sv) ((const char*) (0 + SvPVX(sv)))
+#define SvPV_renew(sv,n) \
+  STMT_START { SvLEN_set(sv, n); \
+    SvPV_set((sv), (MEM_WRAP_CHECK_(n,char)     \
+        (char*)saferealloc((Malloc_t)SvPVX(sv), \
+               (MEM_SIZE)((n)))));  \
+     } STMT_END
 
 /* On MacOS, respect nonbreaking spaces */
 #ifdef MACOS_TRADITIONAL
@@ -31,6 +38,8 @@
 #else
 #define SPACE_OR_TAB(c) ((c)==' '||(c)=='\t')
 #endif
+
+#define CLINE (PL_copline = (CopLINE(PL_curcop) < PL_copline ? CopLINE(PL_curcop) : PL_copline))
 
 #define LEX_NORMAL    10 /* normal code (ie not within "...")     */
 #define LEX_INTERPNORMAL   9 /* code within a string, eg "$foo[$x+1]" */
@@ -390,4 +399,342 @@ S_incline(pTHX_ char *s)
     }
     *t = ch;
     CopLINE_set(PL_curcop, atoi(n)-1);
+}
+
+/* scan_str
+   takes: start position in buffer
+	  keep_quoted preserve \ on the embedded delimiter(s)
+	  keep_delims preserve the delimiters around the string
+   returns: position to continue reading from buffer
+   side-effects: multi_start, multi_close, lex_repl or lex_stuff, and
+   	updates the read buffer.
+
+   This subroutine pulls a string out of the input.  It is called for:
+   	q		single quotes		q(literal text)
+	'		single quotes		'literal text'
+	qq		double quotes		qq(interpolate $here please)
+	"		double quotes		"interpolate $here please"
+	qx		backticks		qx(/bin/ls -l)
+	`		backticks		`/bin/ls -l`
+	qw		quote words		@EXPORT_OK = qw( func() $spam )
+	m//		regexp match		m/this/
+	s///		regexp substitute	s/this/that/
+	tr///		string transliterate	tr/this/that/
+	y///		string transliterate	y/this/that/
+	($*@)		sub prototypes		sub foo ($)
+	(stuff)		sub attr parameters	sub foo : attr(stuff)
+	<>		readline or globs	<FOO>, <>, <$fh>, or <*.c>
+	
+   In most of these cases (all but <>, patterns and transliterate)
+   yylex() calls scan_str().  m// makes yylex() call scan_pat() which
+   calls scan_str().  s/// makes yylex() call scan_subst() which calls
+   scan_str().  tr/// and y/// make yylex() call scan_trans() which
+   calls scan_str().
+
+   It skips whitespace before the string starts, and treats the first
+   character as the delimiter.  If the delimiter is one of ([{< then
+   the corresponding "close" character )]}> is used as the closing
+   delimiter.  It allows quoting of delimiters, and if the string has
+   balanced delimiters ([{<>}]) it allows nesting.
+
+   On success, the SV with the resulting string is put into lex_stuff or,
+   if that is already non-NULL, into lex_repl. The second case occurs only
+   when parsing the RHS of the special constructs s/// and tr/// (y///).
+   For convenience, the terminating delimiter character is stuffed into
+   SvIVX of the SV.
+*/
+
+STATIC char *
+S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims)
+{
+    SV *sv;				/* scalar value: string */
+    char *tmps;				/* temp string, used for delimiter matching */
+    register char *s = start;		/* current position in the buffer */
+    register char term;			/* terminating character */
+    register char *to;			/* current position in the sv's data */
+    I32 brackets = 1;			/* bracket nesting level */
+    bool has_utf8 = FALSE;		/* is there any utf8 content? */
+    I32 termcode;			/* terminating char. code */
+    U8 termstr[UTF8_MAXBYTES];		/* terminating string */
+    STRLEN termlen;			/* length of terminating string */
+    char *last = NULL;			/* last position for nesting bracket */
+
+    /* skip space before the delimiter */
+    if (isSPACE(*s))
+	s = skipspace(s);
+
+    /* mark where we are, in case we need to report errors */
+    CLINE;
+
+    /* after skipping whitespace, the next character is the terminator */
+    term = *s;
+    if (!UTF) {
+	termcode = termstr[0] = term;
+	termlen = 1;
+    }
+    else {
+	termcode = utf8_to_uvchr((U8*)s, &termlen);
+	Copy(s, termstr, termlen, U8);
+	if (!UTF8_IS_INVARIANT(term))
+	    has_utf8 = TRUE;
+    }
+
+    /* mark where we are */
+    PL_multi_start = CopLINE(PL_curcop);
+    PL_multi_open = term;
+
+    /* find corresponding closing delimiter */
+    if (term && (tmps = strchr("([{< )]}> )]}>",term)))
+	termcode = termstr[0] = term = tmps[5];
+
+    PL_multi_close = term;
+
+    /* create a new SV to hold the contents.  87 is leak category, I'm
+       assuming.  79 is the SV's initial length.  What a random number. */
+    sv = NEWSV(87,79);
+    sv_upgrade(sv, SVt_PVIV);
+    SvIV_set(sv, termcode);
+    (void)SvPOK_only(sv);		/* validate pointer */
+
+    /* move past delimiter and try to read a complete string */
+    if (keep_delims)
+	sv_catpvn(sv, s, termlen);
+    s += termlen;
+    for (;;) {
+	if (PL_encoding && !UTF) {
+	    bool cont = TRUE;
+
+	    while (cont) {
+		int offset = s - SvPVX_const(PL_linestr);
+		const bool found = sv_cat_decode(sv, PL_encoding, PL_linestr,
+					   &offset, (char*)termstr, termlen);
+		const char *ns = SvPVX_const(PL_linestr) + offset;
+		char *svlast = SvEND(sv) - 1;
+
+		for (; s < ns; s++) {
+		    if (*s == '\n' && !PL_rsfp)
+			CopLINE_inc(PL_curcop);
+		}
+		if (!found)
+		    goto read_more_line;
+		else {
+		    /* handle quoted delimiters */
+		    if (SvCUR(sv) > 1 && *(svlast-1) == '\\') {
+			const char *t;
+			for (t = svlast-2; t >= SvPVX_const(sv) && *t == '\\';)
+			    t--;
+			if ((svlast-1 - t) % 2) {
+			    if (!keep_quoted) {
+				*(svlast-1) = term;
+				*svlast = '\0';
+				SvCUR_set(sv, SvCUR(sv) - 1);
+			    }
+			    continue;
+			}
+		    }
+		    if (PL_multi_open == PL_multi_close) {
+			cont = FALSE;
+		    }
+		    else {
+			const char *t;
+			char *w;
+			if (!last)
+			    last = SvPVX(sv);
+			for (t = w = last; t < svlast; w++, t++) {
+			    /* At here, all closes are "was quoted" one,
+			       so we don't check PL_multi_close. */
+			    if (*t == '\\') {
+				if (!keep_quoted && *(t+1) == PL_multi_open)
+				    t++;
+				else
+				    *w++ = *t++;
+			    }
+			    else if (*t == PL_multi_open)
+				brackets++;
+
+			    *w = *t;
+			}
+			if (w < t) {
+			    *w++ = term;
+			    *w = '\0';
+			    SvCUR_set(sv, w - SvPVX_const(sv));
+			}
+			last = w;
+			if (--brackets <= 0)
+			    cont = FALSE;
+		    }
+		}
+	    }
+	    if (!keep_delims) {
+		SvCUR_set(sv, SvCUR(sv) - 1);
+		*SvEND(sv) = '\0';
+	    }
+	    break;
+	}
+
+    	/* extend sv if need be */
+	SvGROW(sv, SvCUR(sv) + (PL_bufend - s) + 1);
+	/* set 'to' to the next character in the sv's string */
+	to = SvPVX(sv)+SvCUR(sv);
+
+	/* if open delimiter is the close delimiter read unbridle */
+	if (PL_multi_open == PL_multi_close) {
+	    for (; s < PL_bufend; s++,to++) {
+	    	/* embedded newlines increment the current line number */
+		if (*s == '\n' && !PL_rsfp)
+		    CopLINE_inc(PL_curcop);
+		/* handle quoted delimiters */
+		if (*s == '\\' && s+1 < PL_bufend && term != '\\') {
+		    if (!keep_quoted && s[1] == term)
+			s++;
+		/* any other quotes are simply copied straight through */
+		    else
+			*to++ = *s++;
+		}
+		/* terminate when run out of buffer (the for() condition), or
+		   have found the terminator */
+		else if (*s == term) {
+		    if (termlen == 1)
+			break;
+		    if (s+termlen <= PL_bufend && memEQ(s, (char*)termstr, termlen))
+			break;
+		}
+		else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && UTF)
+		    has_utf8 = TRUE;
+		*to = *s;
+	    }
+	}
+	
+	/* if the terminator isn't the same as the start character (e.g.,
+	   matched brackets), we have to allow more in the quoting, and
+	   be prepared for nested brackets.
+	*/
+	else {
+	    /* read until we run out of string, or we find the terminator */
+	    for (; s < PL_bufend; s++,to++) {
+	    	/* embedded newlines increment the line count */
+		if (*s == '\n' && !PL_rsfp)
+		    CopLINE_inc(PL_curcop);
+		/* backslashes can escape the open or closing characters */
+		if (*s == '\\' && s+1 < PL_bufend) {
+		    if (!keep_quoted &&
+			((s[1] == PL_multi_open) || (s[1] == PL_multi_close)))
+			s++;
+		    else
+			*to++ = *s++;
+		}
+		/* allow nested opens and closes */
+		else if (*s == PL_multi_close && --brackets <= 0)
+		    break;
+		else if (*s == PL_multi_open)
+		    brackets++;
+		else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && UTF)
+		    has_utf8 = TRUE;
+		*to = *s;
+	    }
+	}
+	/* terminate the copied string and update the sv's end-of-string */
+	*to = '\0';
+	SvCUR_set(sv, to - SvPVX_const(sv));
+
+	/*
+	 * this next chunk reads more into the buffer if we're not done yet
+	 */
+
+  	if (s < PL_bufend)
+	    break;		/* handle case where we are done yet :-) */
+
+#ifndef PERL_STRICT_CR
+	if (to - SvPVX_const(sv) >= 2) {
+	    if ((to[-2] == '\r' && to[-1] == '\n') ||
+		(to[-2] == '\n' && to[-1] == '\r'))
+	    {
+		to[-2] = '\n';
+		to--;
+		SvCUR_set(sv, to - SvPVX_const(sv));
+	    }
+	    else if (to[-1] == '\r')
+		to[-1] = '\n';
+	}
+	else if (to - SvPVX_const(sv) == 1 && to[-1] == '\r')
+	    to[-1] = '\n';
+#endif
+	
+     read_more_line:
+	/* if we're out of file, or a read fails, bail and reset the current
+	   line marker so we can report where the unterminated string began
+	*/
+	if (!PL_rsfp ||
+	 !(PL_oldoldbufptr = PL_oldbufptr = s = PL_linestart = filter_gets(PL_linestr, PL_rsfp, 0))) {
+	    sv_free(sv);
+	    CopLINE_set(PL_curcop, (line_t)PL_multi_start);
+	    return Nullch;
+	}
+	/* we read a line, so increment our line counter */
+	CopLINE_inc(PL_curcop);
+
+	/* update debugger info */
+	if (PERLDB_LINE && PL_curstash != PL_debstash) {
+	    SV *sv = NEWSV(88,0);
+
+	    sv_upgrade(sv, SVt_PVMG);
+	    sv_setsv(sv,PL_linestr);
+            (void)SvIOK_on(sv);
+            SvIV_set(sv, 0);
+	    av_store(CopFILEAV(PL_curcop), (I32)CopLINE(PL_curcop), sv);
+	}
+
+	/* having changed the buffer, we must update PL_bufend */
+	PL_bufend = SvPVX(PL_linestr) + SvCUR(PL_linestr);
+	PL_last_lop = PL_last_uni = Nullch;
+    }
+
+    /* at this point, we have successfully read the delimited string */
+
+    if (!PL_encoding || UTF) {
+	if (keep_delims)
+	    sv_catpvn(sv, s, termlen);
+	s += termlen;
+    }
+    if (has_utf8 || PL_encoding)
+	SvUTF8_on(sv);
+
+    PL_multi_end = CopLINE(PL_curcop);
+
+    /* if we allocated too much space, give some back */
+    if (SvCUR(sv) + 5 < SvLEN(sv)) {
+	SvLEN_set(sv, SvCUR(sv) + 1);
+	SvPV_renew(sv, SvLEN(sv));
+    }
+
+    /* decide whether this is the first or second quoted string we've read
+       for this op
+    */
+
+    if (PL_lex_stuff)
+	PL_lex_repl = sv;
+    else
+	PL_lex_stuff = sv;
+    return s;
+}
+
+/*
+ * S_force_next
+ * When the lexer realizes it knows the next token (for instance,
+ * it is reordering tokens for the parser) then it can call S_force_next
+ * to know what token to return the next time the lexer is called.  Caller
+ * will need to set PL_nextval[], and possibly PL_expect to ensure the lexer
+ * handles the token correctly.
+ */
+
+STATIC void
+S_force_next(pTHX_ I32 type)
+{
+    PL_nexttype[PL_nexttoke] = type;
+    PL_nexttoke++;
+    if (PL_lex_state != LEX_KNOWNEXT) {
+  PL_lex_defer = PL_lex_state;
+  PL_lex_expect = PL_expect;
+  PL_lex_state = LEX_KNOWNEXT;
+    }
 }
