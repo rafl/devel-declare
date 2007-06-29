@@ -1,7 +1,6 @@
 use strict;
 use warnings;
-
-print "1..1\n";
+use Test::More 'no_plan';
 
 sub method {
   my ($pack, $name, $sub) = @_;
@@ -13,11 +12,7 @@ use Devel::Declare 'method';
 
 method bar {
   my $str = join(', ', @_);
-  if ($str eq 'main, baz, quux') {
-    print "ok 1\n";
-  } else {
-    print "not ok 1\n";
-  }
+  is($str, 'main, baz, quux', 'Method args ok');
 };
 
 __PACKAGE__->bar(qw(baz quux));
