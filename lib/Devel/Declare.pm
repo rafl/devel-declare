@@ -67,14 +67,14 @@ my $temp_name;
 my $temp_save;
 
 sub init_declare {
-  my ($pack, $use, $name, $proto) = @_;
+  my ($usepack, $use, $inpack, $name, $proto) = @_;
   my ($name_h, $XX_h, $extra_code)
-       = $declarator_handlers{$pack}{$use}->(
-           $pack, $use, $name, $proto, defined(wantarray)
+       = $declarator_handlers{$usepack}{$use}->(
+           $usepack, $use, $inpack, $name, $proto, defined(wantarray)
          );
   ($temp_name, $temp_save) = ([], []);
   if ($name) {
-    $name = "${pack}::${name}" unless $name =~ /::/;
+    $name = "${inpack}::${name}" unless $name =~ /::/;
     push(@$temp_name, $name);
     no strict 'refs';
     push(@$temp_save, \&{$name});
@@ -83,12 +83,12 @@ sub init_declare {
     *{$name} = $name_h;
   }
   if ($XX_h) {
-    push(@$temp_name, "${pack}::X");
+    push(@$temp_name, "${inpack}::X");
     no strict 'refs';
-    push(@$temp_save, \&{"${pack}::X"});
+    push(@$temp_save, \&{"${inpack}::X"});
     no warnings 'redefine';
     no warnings 'prototype';
-    *{"${pack}::X"} = $XX_h;
+    *{"${inpack}::X"} = $XX_h;
   }
   if (defined wantarray) {
     return $extra_code || '0;';

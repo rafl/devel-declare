@@ -51,7 +51,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   HV* is_declarator_pack_hash;
   SV** is_declarator_flag_ref;
   int dd_flags;
-  char* cb_args[5];
+  char* cb_args[6];
   dSP; /* define stack pointer for later call stuff */
   char* retstr;
   STRLEN n_a; /* for POPpx */
@@ -185,9 +185,10 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 #endif
   cb_args[0] = HvNAME(stash);
   cb_args[1] = GvNAME(kGVOP_gv);
-  cb_args[2] = found_name;
-  cb_args[3] = found_proto;
-  cb_args[4] = NULL;
+  cb_args[2] = HvNAME(PL_curstash);
+  cb_args[3] = found_name;
+  cb_args[4] = found_proto;
+  cb_args[5] = NULL;
 
   if (len && found_proto)
     in_declare = 2;

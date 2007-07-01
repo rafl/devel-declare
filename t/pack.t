@@ -5,7 +5,7 @@ use Test::More 'no_plan';
 sub class { $_[0]->(); }
 
 sub handle_class {
-  my ($pack, $use, $name, $proto, $is_block) = @_;
+  my ($usepack, $use, $inpack, $name, $proto, $is_block) = @_;
   return (sub (&) { shift; }, undef, "package ${name};");
 }
 

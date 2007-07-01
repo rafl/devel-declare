@@ -7,7 +7,7 @@ sub fun :lvalue { return my $sv; }
 sub X { "what?" }
 
 sub handle_fun {
-  my ($pack, $use, $name, $proto) = @_;
+  my ($usepack, $use, $inpack, $name, $proto) = @_;
   my $XX = sub (&) {
     my $cr = $_[0];
     return sub {

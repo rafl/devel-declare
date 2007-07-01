@@ -3,14 +3,14 @@ use warnings;
 use Test::More 'no_plan';
 
 sub method {
-  my ($pack, $name, $sub) = @_;
+  my ($usepack, $name, $inpack, $sub) = @_;
   no strict 'refs';
-  *{"${pack}::${name}"} = $sub;
+  *{"${inpack}::${name}"} = $sub;
 }
 
 sub handle_method {
-  my ($pack, $use, $name) = @_;
-  return sub (&) { ($pack, $name, $_[0]); };
+  my ($usepack, $use, $inpack, $name) = @_;
+  return sub (&) { ($usepack, $name, $inpack, $_[0]); };
 }
 
 use Devel::Declare 'method' => \&handle_method;
