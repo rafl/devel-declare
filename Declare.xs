@@ -15,6 +15,7 @@
 
 #define DD_HANDLE_NAME 1
 #define DD_HANDLE_PROTO 2
+#define DD_HANDLE_PACKAGE 8
 
 #ifdef DD_DEBUG
 #define DD_DEBUG_S printf("Buffer: %s\n", s);
@@ -135,9 +136,9 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
     DD_DEBUG_S
 
-    /* 0 in arg 4 is allow_package - not trying that yet :) */
+    /* arg 4 is allow_package */
 
-    s = scan_word(s, tmpbuf, sizeof tmpbuf, 0, &len);
+    s = scan_word(s, tmpbuf, sizeof tmpbuf, dd_flags & DD_HANDLE_PACKAGE, &len);
 
     DD_DEBUG_S
 

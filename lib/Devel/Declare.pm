@@ -11,8 +11,9 @@ our $VERSION = 0.001000;
 use constant DECLARE_NAME => 1;
 use constant DECLARE_PROTO => 2;
 use constant DECLARE_NONE => 4;
+use constant DECLARE_PACKAGE => 8+1; # name implicit
 
-use vars qw(%declarators %declarator_handlers @next_pad_inject);
+use vars qw(%declarators %declarator_handlers);
 use base qw(DynaLoader);
 
 bootstrap Devel::Declare;
@@ -22,7 +23,7 @@ sub import {
   my $target = caller;
   if (@_ == 1) { # "use Devel::Declare;"
     no strict 'refs';
-    foreach my $name (qw(NAME PROTO NONE)) {
+    foreach my $name (qw(NAME PROTO NONE PACKAGE)) {
       *{"${target}::DECLARE_${name}"} = *{"DECLARE_${name}"};
     }
   } else {
@@ -62,7 +63,6 @@ sub teardown_for {
   teardown();
 }
 
-my $temp_pack;
 my $temp_name;
 my $temp_save;
 
@@ -72,17 +72,18 @@ sub init_declare {
        = $declarator_handlers{$pack}{$use}->(
            $pack, $use, $name, $proto, defined(wantarray)
          );
-  ($temp_pack, $temp_name, $temp_save) = ($pack, [], []);
+  ($temp_name, $temp_save) = ([], []);
   if ($name) {
+    $name = "${pack}::${name}" unless $name =~ /::/;
     push(@$temp_name, $name);
     no strict 'refs';
-    push(@$temp_save, \&{"${pack}::${name}"});
+    push(@$temp_save, \&{$name});
     no warnings 'redefine';
     no warnings 'prototype';
-    *{"${pack}::${name}"} = $name_h;
+    *{$name} = $name_h;
   }
   if ($XX_h) {
-    push(@$temp_name, 'X');
+    push(@$temp_name, "${pack}::X");
     no strict 'refs';
     push(@$temp_save, \&{"${pack}::X"});
     no warnings 'redefine';
@@ -101,15 +102,13 @@ sub done_declare {
   my $name = pop(@{$temp_name||[]});
   die "done_declare called with no temp_name stack" unless defined($name);
   my $saved = pop(@$temp_save);
+  $name =~ s/(.*):://;
+  my $temp_pack = $1;
   delete ${"${temp_pack}::"}{$name};
   if ($saved) {
     no warnings 'prototype';
     *{"${temp_pack}::${name}"} = $saved;
   }
-}
-
-sub inject_into_next_pad {
-  shift; @next_pad_inject = @_;
 }
 
 =head1 NAME
