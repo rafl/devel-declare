@@ -10,8 +10,9 @@ our $VERSION = 0.001000;
 
 use constant DECLARE_NAME => 1;
 use constant DECLARE_PROTO => 2;
+use constant DECLARE_NONE => 4;
 
-use vars qw(%declarators %declarator_handlers);
+use vars qw(%declarators %declarator_handlers @next_pad_inject);
 use base qw(DynaLoader);
 
 bootstrap Devel::Declare;
@@ -21,8 +22,8 @@ sub import {
   my $target = caller;
   if (@_ == 1) { # "use Devel::Declare;"
     no strict 'refs';
-    foreach my $name (qw(DECLARE_NAME DECLARE_PROTO)) {
-      *{"${target}::${name}"} = *{"${name}"};
+    foreach my $name (qw(NAME PROTO NONE)) {
+      *{"${target}::DECLARE_${name}"} = *{"DECLARE_${name}"};
     }
   } else {
     $class->setup_for($target => \%args);
@@ -67,9 +68,10 @@ my $temp_save;
 
 sub init_declare {
   my ($pack, $use, $name, $proto) = @_;
-  my ($name_h, $XX_h) = $declarator_handlers{$pack}{$use}->(
-                            $pack, $use, $name, $proto
-                        );
+  my ($name_h, $XX_h, $extra_code)
+       = $declarator_handlers{$pack}{$use}->(
+           $pack, $use, $name, $proto, defined(wantarray)
+         );
   ($temp_pack, $temp_name, $temp_save) = ($pack, [], []);
   if ($name) {
     push(@$temp_name, $name);
@@ -87,6 +89,11 @@ sub init_declare {
     no warnings 'prototype';
     *{"${pack}::X"} = $XX_h;
   }
+  if (defined wantarray) {
+    return $extra_code || '0;';
+  } else {
+    return;
+  }
 }
 
 sub done_declare {
@@ -99,6 +106,10 @@ sub done_declare {
     no warnings 'prototype';
     *{"${temp_pack}::${name}"} = $saved;
   }
+}
+
+sub inject_into_next_pad {
+  shift; @next_pad_inject = @_;
 }
 
 =head1 NAME

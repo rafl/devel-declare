@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DD_DEBUG 0
+#if 0
+#define DD_DEBUG
+#endif
 
 #define DD_HANDLE_NAME 1
 #define DD_HANDLE_PROTO 2
@@ -26,7 +28,7 @@
 /* placeholders for PL_check entries we wrap */
 
 STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
-STATIC OP *(*dd_old_ck_nextstate)(pTHX_ OP *op);
+STATIC OP *(*dd_old_ck_lineseq)(pTHX_ OP *op);
 
 /* flag to trigger removal of temporary declaree sub */
 
@@ -49,6 +51,9 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   SV** is_declarator_flag_ref;
   int dd_flags;
   char* cb_args[5];
+  dSP; /* define stack pointer for later call stuff */
+  char* retstr;
+  STRLEN n_a; /* for POPpx */
 
   o = dd_old_ck_rv2cv(aTHX_ o); /* let the original do its job */
 
@@ -156,7 +161,10 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
         printf("Found proto %s\n", SvPVX(PL_lex_stuff));
 #endif
         found_proto = SvPVX(PL_lex_stuff);
-        *save_s++ = '=';
+        if (len) /* foo name () => foo name  X, only foo parsed so works */
+          *save_s++ = ' ';
+        else /* foo () => foo =X, TOKEN('&') won't handle foo X */
+          *save_s++ = '=';
         *save_s++ = 'X';
         while (save_s < s) {
           *save_s++ = ' ';
@@ -168,25 +176,84 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
     }
   }
 
-  if (len || found_proto) {
-    if (!len)
-      found_name[0] = 0;
+  if (!len)
+    found_name[0] = 0;
+
 #ifdef DD_DEBUG
-  printf("Calling init_declare");
+  printf("Calling init_declare\n");
 #endif
-    cb_args[0] = HvNAME(stash);
-    cb_args[1] = GvNAME(kGVOP_gv);
-    cb_args[2] = found_name;
-    cb_args[3] = found_proto;
-    cb_args[4] = NULL;
+  cb_args[0] = HvNAME(stash);
+  cb_args[1] = GvNAME(kGVOP_gv);
+  cb_args[2] = found_name;
+  cb_args[3] = found_proto;
+  cb_args[4] = NULL;
+
+  if (len && found_proto)
+    in_declare = 2;
+  else if (len || found_proto)
+    in_declare = 1;
+  if (found_proto)
+    PL_lex_stuff = Nullsv;
+  s = skipspace(s);
+#ifdef DD_DEBUG
+  printf("cur buf: %s\n", s);
+  printf("bufend at: %i\n", PL_bufend - s);
+  printf("linestr: %s\n", SvPVX(PL_linestr));
+  printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+#endif
+  if (*s++ == '{') {
+    call_argv("Devel::Declare::init_declare", G_SCALAR, cb_args);
+    SPAGAIN;
+    retstr = POPpx;
+    PUTBACK;
+    if (retstr && strlen(retstr)) {
+#ifdef DD_DEBUG
+      printf("Got string %s\n", retstr);
+#endif
+      SvGROW(PL_linestr, strlen(retstr));
+      memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
+      memmove(s, retstr, strlen(retstr));
+      PL_bufend += strlen(retstr);
+#ifdef DD_DEBUG
+  printf("cur buf: %s\n", s);
+  printf("bufend at: %i\n", PL_bufend - s);
+  printf("linestr: %s\n", SvPVX(PL_linestr));
+  printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+#endif
+    }
+  } else {
     call_argv("Devel::Declare::init_declare", G_VOID|G_DISCARD, cb_args);
-    if (len && found_proto)
-      in_declare = 2;
-    else
-      in_declare = 1;
-    if (found_proto)
-      PL_lex_stuff = Nullsv;
   }
+  return o;
+}
+
+STATIC OP *dd_ck_lineseq(pTHX_ OP *o) {
+  AV* pad_inject_list;
+  SV** to_inject_ref;
+  int i, pad_inject_list_last;
+
+  o = dd_old_ck_lineseq(o);
+
+  pad_inject_list = get_av("Devel::Declare::next_pad_inject", FALSE);
+  if (!pad_inject_list)
+    return o;
+
+  pad_inject_list_last = av_len(pad_inject_list);
+
+  if (pad_inject_list_last == -1)
+    return o;
+
+  for (i = 0; i <= pad_inject_list_last; i++) {
+    to_inject_ref = av_fetch(pad_inject_list, i, FALSE);
+    if (to_inject_ref && SvPOK(*to_inject_ref)) {
+#ifdef DD_DEBUG
+  printf("Injecting %s into pad\n", SvPVX(*to_inject_ref));
+#endif
+      allocmy(SvPVX(*to_inject_ref));
+    }
+  }
+
+  av_clear(pad_inject_list);
 
   return o;
 }
@@ -203,6 +270,8 @@ setup()
   if (!initialized++) {
     dd_old_ck_rv2cv = PL_check[OP_RV2CV];
     PL_check[OP_RV2CV] = dd_ck_rv2cv;
+    dd_old_ck_lineseq = PL_check[OP_LINESEQ];
+    PL_check[OP_LINESEQ] = dd_ck_lineseq;
   }
 
 void

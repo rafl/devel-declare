@@ -24,7 +24,7 @@ method bar {
 method # blather
   baz
   # whee
-{
+{ # fweet
   $args2 = join(', ', @_);
 };
 
