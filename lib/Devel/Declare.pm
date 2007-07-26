@@ -15,6 +15,7 @@ use constant DECLARE_PACKAGE => 8+1; # name implicit
 
 use vars qw(%declarators %declarator_handlers);
 use base qw(DynaLoader);
+use Scalar::Util 'set_prototype';
 
 bootstrap Devel::Declare;
 
@@ -108,6 +109,35 @@ sub done_declare {
   if ($saved) {
     no warnings 'prototype';
     *{"${temp_pack}::${name}"} = $saved;
+  }
+}
+
+sub build_sub_installer {
+  my ($class, $pack, $name, $proto) = @_;
+  return eval "
+    package ${pack};
+    my \$body;
+    sub ${name} (${proto}) :lvalue {\n"
+    .'$body->(@_);
+    };
+    sub { ($body) = @_; };';
+}
+
+sub setup_declarators {
+  my ($class, $pack, $to_setup) = @_;
+  die "${class}->setup_declarator(\$pack, \\\%to_setup)"
+    unless defined($pack) && ref($to_setup eq 'HASH');
+  foreach my $name (keys %$to_setup) {
+    my $info = $to_setup->{$name};
+    my $flags = $info->{flags} || DECLARE_NAME;
+    my $run = $info->{run};
+    my $compile = $info->{compile};
+    my $proto = $info->{proto} || '&';
+    my $sub_proto = $proto;
+    # make all args optional to enable lvalue for DECLARE_NONE
+    $sub_proto =~ s/;//; $sub_proto = ';'.$sub_proto;
+    my $installer = $class->build_sub_installer($pack, $name, $proto);
+    # XXX UNCLEAN 
   }
 }
 
