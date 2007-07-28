@@ -234,7 +234,7 @@ STATIC OP *dd_ck_lineseq(pTHX_ OP *o) {
   SV** to_inject_ref;
   int i, pad_inject_list_last;
 
-  o = dd_old_ck_lineseq(o);
+  o = dd_old_ck_lineseq(aTHX_ o);
 
   pad_inject_list = get_av("Devel::Declare::next_pad_inject", FALSE);
   if (!pad_inject_list)
