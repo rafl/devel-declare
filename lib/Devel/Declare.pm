@@ -13,11 +13,13 @@ use constant DECLARE_PROTO => 2;
 use constant DECLARE_NONE => 4;
 use constant DECLARE_PACKAGE => 8+1; # name implicit
 
-use vars qw(%declarators %declarator_handlers);
+use vars qw(%declarators %declarator_handlers @ISA);
 use base qw(DynaLoader);
 use Scalar::Util 'set_prototype';
 
 bootstrap Devel::Declare;
+
+@ISA = ();
 
 sub import {
   my ($class, %args) = @_;
@@ -100,9 +102,9 @@ sub init_declare {
 
 sub done_declare {
   no strict 'refs';
-  my $name = pop(@{$temp_name||[]});
+  my $name = shift(@{$temp_name||[]});
   die "done_declare called with no temp_name stack" unless defined($name);
-  my $saved = pop(@$temp_save);
+  my $saved = shift(@$temp_save);
   $name =~ s/(.*):://;
   my $temp_pack = $1;
   delete ${"${temp_pack}::"}{$name};
@@ -118,15 +120,17 @@ sub build_sub_installer {
     package ${pack};
     my \$body;
     sub ${name} (${proto}) :lvalue {\n"
-    .'$body->(@_);
+    .'my $ret = $body->(@_);
+      return $ret;
     };
     sub { ($body) = @_; };';
 }
 
 sub setup_declarators {
   my ($class, $pack, $to_setup) = @_;
-  die "${class}->setup_declarator(\$pack, \\\%to_setup)"
-    unless defined($pack) && ref($to_setup eq 'HASH');
+  die "${class}->setup_declarators(\$pack, \\\%to_setup)"
+    unless defined($pack) && ref($to_setup) eq 'HASH';
+  my %setup_for_args;
   foreach my $name (keys %$to_setup) {
     my $info = $to_setup->{$name};
     my $flags = $info->{flags} || DECLARE_NAME;
@@ -136,9 +140,53 @@ sub setup_declarators {
     my $sub_proto = $proto;
     # make all args optional to enable lvalue for DECLARE_NONE
     $sub_proto =~ s/;//; $sub_proto = ';'.$sub_proto;
-    my $installer = $class->build_sub_installer($pack, $name, $proto);
-    # XXX UNCLEAN 
+    #my $installer = $class->build_sub_installer($pack, $name, $proto);
+    my $installer = $class->build_sub_installer($pack, $name, '@');
+    my $proto_maker = eval q!
+      sub {
+        my $body = shift;
+        sub (!.$sub_proto.q!) {
+          $body->(@_);
+        };
+      };
+    !;
+    $installer->(sub :lvalue {
+      if (@_) { warn @_;
+        $run->(undef, undef, @_);
+      }
+      return my $sv;
+    });
+    $setup_for_args{$name} = [
+      $flags,
+      sub {
+        my ($usepack, $use, $inpack, $name, $proto) = @_;
+        my $extra_code = $compile->($name, $proto);
+        my $main_handler = $proto_maker->(sub {
+          $run->($name, $proto, @_);
+        });
+        my ($name_h, $XX);
+        if (defined $proto) {
+          $name_h = sub :lvalue { return my $sv; };
+          $XX = $main_handler;
+        } else {
+          $name_h = $main_handler;
+        }
+        return ($name_h, $XX, $extra_code);
+      }
+    ];
   }
+  $class->setup_for($pack, \%setup_for_args);
+}
+
+sub install_declarator {
+  my ($class, $target_pack, $target_name, $flags, $filter, $handler) = @_;
+  $class->setup_declarators($target_pack, {
+    $target_name => {
+      flags => $flags,
+      compile => $filter,
+      run => $handler,
+   }
+  });
 }
 
 =head1 NAME
