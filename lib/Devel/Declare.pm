@@ -235,9 +235,9 @@ calls.
 
 =head1 AUTHOR
 
-Matt S Trout - <mst@shadowcatsystems.co.uk>
+Matt S Trout - <mst@shadowcat.co.uk>
 
-Company: http://www.shadowcatsystems.co.uk/
+Company: http://www.shadowcat.co.uk/
 Blog: http://chainsawblues.vox.com/
 
 =head1 LICENSE
