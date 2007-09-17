@@ -151,8 +151,14 @@ sub setup_declarators {
       };
     !;
     $installer->(sub :lvalue {
-      if (@_) { warn @_;
-        $run->(undef, undef, @_);
+      if (@_) {
+        if (ref $_[0] eq 'HASH') {
+          shift;
+          my $r = $run->(undef, undef, @_);
+          return $r;
+        } else {
+          return $_[1];
+        }
       }
       return my $sv;
     });
@@ -162,14 +168,17 @@ sub setup_declarators {
         my ($usepack, $use, $inpack, $name, $proto) = @_;
         my $extra_code = $compile->($name, $proto);
         my $main_handler = $proto_maker->(sub {
-          $run->($name, $proto, @_);
+          ("DONE", $run->($name, $proto, @_));
         });
         my ($name_h, $XX);
         if (defined $proto) {
           $name_h = sub :lvalue { return my $sv; };
           $XX = $main_handler;
-        } else {
+        } elsif (defined $name && length $name) {
           $name_h = $main_handler;
+        } else {
+          $extra_code ||= '';
+          $extra_code = '}, sub {'.$extra_code;
         }
         return ($name_h, $XX, $extra_code);
       }

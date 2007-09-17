@@ -46,7 +46,7 @@ my ($test_method1, $test_method2);
     return 'DeclareTest2: bar';
   };
 
-  $test_method1 = method (@_) {
+  $test_method1 = method {
     return join(', ', $self->{attr}, $_[1]);
   };
 
