@@ -1,1 +1,1 @@
-^(?!script/|lib/|inc/|t/|example/|Makefile.PL$|README$|MANIFEST$|Changes$|META.yml|.*?.xs$|.*?\.c$)
+^(?!script/|lib/|inc/|t/|example/|Makefile.PL$|README$|MANIFEST$|Changes$|META.yml|.*?.xs$|stolen_chunk_of_toke.c$)
