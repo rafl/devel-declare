@@ -1,4 +1,7 @@
-Changes for Devel-BeginLift
+Changes for Devel-Declare
+
+0.001001
+  - compilation fixes for 5.8.1+
 
 0.001000
   - Initial release to CPAN

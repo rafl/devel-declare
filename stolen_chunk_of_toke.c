@@ -17,7 +17,7 @@
  *   up but if it does blame me (Matt S Trout), not the poor original authors
  */
 
-/* the following #defines are stolen from assorted headers, not toke.c */
+/* the following #defines are stolen from assorted headers, not toke.c (mst) */
 
 #define DPTR2FPTR(t,p) ((t)PTR2nat(p))  /* data pointer to function pointer */
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
@@ -56,6 +56,14 @@
 #define LEX_INTERPCONST    2 /* NOT USED */
 #define LEX_FORMLINE     1 /* expecting a format line               */
 #define LEX_KNOWNEXT     0 /* next token known; just return it      */
+
+/* and this one is my own madness (mst) */
+
+#if PERL_REVISION == 5 && PERL_VERSION == 8 && PERL_SUBVERSION >= 8
+#define PERL_5_8_8_PLUS
+#endif
+
+/* and now we're back to the toke.c stuff again (mst) */
 
 static const char ident_too_long[] =
   "Identifier too long";
@@ -357,6 +365,12 @@ S_incline(pTHX_ char *s)
     ch = *t;
     *t = '\0';
     if (t - s > 0) {
+/* this chunk was added to S_incline during 5.8.8. I don't know why but I don't
+   honestly care since I probably want to be bug-compatible anyway (mst) */
+
+/* ... my kingdom for a perl parser in perl ... (mst) */
+
+#ifdef PERL_5_8_8_PLUS
 #ifndef USE_ITHREADS
 	const char *cf = CopFILE(PL_curcop);
 	if (cf && strlen(cf) > 7 && strnEQ(cf, "(eval ", 6)) {
@@ -394,6 +408,8 @@ S_incline(pTHX_ char *s)
 	    if (tmpbuf2 != smallbuf2) Safefree(tmpbuf2);
 	}
 #endif
+#endif
+/* second endif closes out the "are we 5.8.(8+)" conditional */
 	CopFILE_free(PL_curcop);
 	CopFILE_set(PL_curcop, s);
     }
@@ -455,7 +471,9 @@ S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims)
     I32 brackets = 1;			/* bracket nesting level */
     bool has_utf8 = FALSE;		/* is there any utf8 content? */
     I32 termcode;			/* terminating char. code */
-    U8 termstr[UTF8_MAXBYTES];		/* terminating string */
+    /* 5.8.7+ uses UTF8_MAXBYTES but also its utf8.h defs _MAXLEN to it so
+       I'm reasonably hopeful this won't destroy anything (mst) */
+    U8 termstr[UTF8_MAXLEN];		/* terminating string */
     STRLEN termlen;			/* length of terminating string */
     char *last = NULL;			/* last position for nesting bracket */
 
@@ -704,7 +722,12 @@ S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims)
     /* if we allocated too much space, give some back */
     if (SvCUR(sv) + 5 < SvLEN(sv)) {
 	SvLEN_set(sv, SvCUR(sv) + 1);
+/* 5.8.8 uses SvPV_renew, no prior version actually has the damn thing (mst) */
+#ifdef PERL_5_8_8_PLUS
 	SvPV_renew(sv, SvLEN(sv));
+#else
+	Renew(SvPVX(sv), SvLEN(sv), char);
+#endif
     }
 
     /* decide whether this is the first or second quoted string we've read
