@@ -1,5 +1,7 @@
 use inc::Module::Install 0.67;
 
+require 5.008001;
+
 name 'Devel-Declare';
 all_from 'lib/Devel/Declare.pm';
 
