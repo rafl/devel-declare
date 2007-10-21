@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-our $VERSION = '0.001001';
+our $VERSION = '0.001002';
 
 # mirrored in Declare.xs as DD_HANDLE_*
 
@@ -203,6 +203,10 @@ sub install_declarator {
 Devel::Declare - 
 
 =head1 SYNOPSIS
+
+Look at the tests. This module is currently on CPAN to ease smoke testing
+and allow early adopters who've been involved in the design to experiment
+with it.
 
 =head1 DESCRIPTION
 
