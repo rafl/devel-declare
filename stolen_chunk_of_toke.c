@@ -23,8 +23,16 @@
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
 #define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
 #define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),
+
+/* conditionalise these two because as of 5.9.5 we already get them from
+   the headers (mst) */
+#ifndef Newx
 #define Newx(v,n,t) (v = (MEM_WRAP_CHECK_(n,t) (t*)safemalloc((MEM_SIZE)((n)*sizeof(t)))))
+#endif
+#ifndef SvPVX_const
 #define SvPVX_const(sv) ((const char*) (0 + SvPVX(sv)))
+#endif
+
 #define SvPV_renew(sv,n) \
   STMT_START { SvLEN_set(sv, n); \
     SvPV_set((sv), (MEM_WRAP_CHECK_(n,char)     \
@@ -57,10 +65,76 @@
 #define LEX_FORMLINE     1 /* expecting a format line               */
 #define LEX_KNOWNEXT     0 /* next token known; just return it      */
 
-/* and this one is my own madness (mst) */
+/* and these two are my own madness (mst) */
 
 #if PERL_REVISION == 5 && PERL_VERSION == 8 && PERL_SUBVERSION >= 8
 #define PERL_5_8_8_PLUS
+#endif
+
+#if PERL_REVISION == 5 && PERL_VERSION > 8
+#define PERL_5_9_PLUS
+#endif
+
+#ifdef PERL_5_9_PLUS
+/* 5.9+ moves a bunch of things to a PL_parser struct so we need to
+   declare the backcompat macros for things to still work (mst) */
+
+/* XXX temporary backwards compatibility */
+#define PL_lex_brackets         (PL_parser->lex_brackets)
+#define PL_lex_brackstack       (PL_parser->lex_brackstack)
+#define PL_lex_casemods         (PL_parser->lex_casemods)
+#define PL_lex_casestack        (PL_parser->lex_casestack)
+#define PL_lex_defer            (PL_parser->lex_defer)
+#define PL_lex_dojoin           (PL_parser->lex_dojoin)
+#define PL_lex_expect           (PL_parser->lex_expect)
+#define PL_lex_formbrack        (PL_parser->lex_formbrack)
+#define PL_lex_inpat            (PL_parser->lex_inpat)
+#define PL_lex_inwhat           (PL_parser->lex_inwhat)
+#define PL_lex_op               (PL_parser->lex_op)
+#define PL_lex_repl             (PL_parser->lex_repl)
+#define PL_lex_starts           (PL_parser->lex_starts)
+#define PL_lex_stuff            (PL_parser->lex_stuff)
+#define PL_multi_start          (PL_parser->multi_start)
+#define PL_multi_open           (PL_parser->multi_open)
+#define PL_multi_close          (PL_parser->multi_close)
+#define PL_pending_ident        (PL_parser->pending_ident)
+#define PL_preambled            (PL_parser->preambled)
+#define PL_sublex_info          (PL_parser->sublex_info)
+#define PL_linestr              (PL_parser->linestr)
+#define PL_sublex_info          (PL_parser->sublex_info)
+#define PL_linestr              (PL_parser->linestr)
+#define PL_expect               (PL_parser->expect)
+#define PL_copline              (PL_parser->copline)
+#define PL_bufptr               (PL_parser->bufptr)
+#define PL_oldbufptr            (PL_parser->oldbufptr)
+#define PL_oldoldbufptr         (PL_parser->oldoldbufptr)
+#define PL_linestart            (PL_parser->linestart)
+#define PL_bufend               (PL_parser->bufend)
+#define PL_last_uni             (PL_parser->last_uni)
+#define PL_last_lop             (PL_parser->last_lop)
+#define PL_last_lop_op          (PL_parser->last_lop_op)
+#define PL_lex_state            (PL_parser->lex_state)
+#define PL_rsfp                 (PL_parser->rsfp)
+#define PL_rsfp_filters         (PL_parser->rsfp_filters)
+#define PL_in_my                (PL_parser->in_my)
+#define PL_in_my_stash          (PL_parser->in_my_stash)
+#define PL_tokenbuf             (PL_parser->tokenbuf)
+#define PL_multi_end            (PL_parser->multi_end)
+#define PL_error_count          (PL_parser->error_count)
+/* these three are from the non-PERL_MAD path but I don't -think- I need
+   the PERL_MAD stuff since my code isn't really populating things (mst) */
+#  define PL_nexttoke           (PL_parser->nexttoke)
+#  define PL_nexttype           (PL_parser->nexttype)
+#  define PL_nextval            (PL_parser->nextval)
+/* end of backcompat macros form 5.9 toke.c (mst) */
+/* we also need this because we define PERL_CORE so handy.h doesn't provide
+   it for us (mst) */
+#define NEWSV(x,len)    newSV(len)
+#endif
+
+/* when ccflags include -DDEBUGGING we need this for earlier 5.8 perls */
+#ifndef SvPV_nolen_const
+#define SvPV_nolen_const SvPV_nolen
 #endif
 
 /* and now we're back to the toke.c stuff again (mst) */
@@ -321,12 +395,20 @@ S_scan_word(pTHX_ register char *s, char *dest, STRLEN destlen, int allow_packag
  * If so, it sets the current line number and file to the values in the comment.
  */
 
+/* 5.9+ make the char *s in S_incline const and declare it in proto.h so we
+   need to do the same to avoid a prototype mismatch (mst) */
+#ifdef PERL_5_9_PLUS
+#define S_INCLINE_CONST const
+#else
+#define S_INCLINE_CONST
+#endif
+
 STATIC void
-S_incline(pTHX_ char *s)
+S_incline(pTHX_ S_INCLINE_CONST char *s)
 {
     char *t;
-    char *n;
-    char *e;
+    S_INCLINE_CONST char *n;
+    S_INCLINE_CONST char *e;
     char ch;
 
     CopLINE_inc(PL_curcop);
@@ -354,7 +436,8 @@ S_incline(pTHX_ char *s)
 	e = t + 1;
     }
     else {
-	for (t = s; !isSPACE(*t); t++) ;
+        /* explicitly cast to char * in case S_INCLINE_CONST in force (mst) */
+	for (t = (char *)s; !isSPACE(*t); t++) ;
 	e = t;
     }
     while (SPACE_OR_TAB(*e) || *e == '\r' || *e == '\f')

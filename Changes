@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.001002
+  - compilation fixes for 5.9.5 and -DDEBUGGING
+
 0.001001
   - compilation fixes for 5.8.1+
   - set Makefile.PL to bomb out for <5.8.1
