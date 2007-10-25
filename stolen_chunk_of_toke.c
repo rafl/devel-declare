@@ -19,6 +19,18 @@
 
 /* the following #defines are stolen from assorted headers, not toke.c (mst) */
 
+#define skipspace(a)            S_skipspace(aTHX_ a)
+#define incline(a)              S_incline(aTHX_ a)
+#define filter_gets(a,b,c)      S_filter_gets(aTHX_ a,b,c)
+#define scan_str(a,b,c)         S_scan_str(aTHX_ a,b,c)
+#define scan_word(a,b,c,d,e)    S_scan_word(aTHX_ a,b,c,d,e)
+
+STATIC void     S_incline(pTHX_ char *s);
+STATIC char*    S_skipspace(pTHX_ char *s);
+STATIC char *   S_filter_gets(pTHX_ SV *sv, PerlIO *fp, STRLEN append);
+STATIC char*    S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims);
+STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow_package, STRLEN *slp);
+
 #define DPTR2FPTR(t,p) ((t)PTR2nat(p))  /* data pointer to function pointer */
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
 #define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
@@ -127,8 +139,10 @@
 #  define PL_nexttype           (PL_parser->nexttype)
 #  define PL_nextval            (PL_parser->nextval)
 /* end of backcompat macros form 5.9 toke.c (mst) */
+#endif
 /* we also need this because we define PERL_CORE so handy.h doesn't provide
    it for us (mst) */
+#ifndef
 #define NEWSV(x,len)    newSV(len)
 #endif
 
@@ -395,20 +409,12 @@ S_scan_word(pTHX_ register char *s, char *dest, STRLEN destlen, int allow_packag
  * If so, it sets the current line number and file to the values in the comment.
  */
 
-/* 5.9+ make the char *s in S_incline const and declare it in proto.h so we
-   need to do the same to avoid a prototype mismatch (mst) */
-#ifdef PERL_5_9_PLUS
-#define S_INCLINE_CONST const
-#else
-#define S_INCLINE_CONST
-#endif
-
 STATIC void
-S_incline(pTHX_ S_INCLINE_CONST char *s)
+S_incline(pTHX_ char *s)
 {
     char *t;
-    S_INCLINE_CONST char *n;
-    S_INCLINE_CONST char *e;
+    char *n;
+    char *e;
     char ch;
 
     CopLINE_inc(PL_curcop);
@@ -436,8 +442,7 @@ S_incline(pTHX_ S_INCLINE_CONST char *s)
 	e = t + 1;
     }
     else {
-        /* explicitly cast to char * in case S_INCLINE_CONST in force (mst) */
-	for (t = (char *)s; !isSPACE(*t); t++) ;
+	for (t = s; !isSPACE(*t); t++) ;
 	e = t;
     }
     while (SPACE_OR_TAB(*e) || *e == '\r' || *e == '\f')

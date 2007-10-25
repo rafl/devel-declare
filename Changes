@@ -1,5 +1,10 @@
 Changes for Devel-Declare
 
+0.001003
+  - internalise definitions for toke.c chunks to save hassle
+  - make NEWSV macro defined via ifndef rather than version check in case
+    of 5.8.8-maint (and 5.8.9)
+
 0.001002
   - compilation fixes for 5.9.5 and -DDEBUGGING
 
