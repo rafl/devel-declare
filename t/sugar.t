@@ -6,15 +6,15 @@ BEGIN {
     'DeclareTest', 'method', DECLARE_PACKAGE | DECLARE_PROTO,
     sub {
       my ($name, $proto) = @_;
-no warnings 'uninitialized';
-warn "NP: ".join(', ', @_)."\n";
+#no warnings 'uninitialized';
+#warn "NP: ".join(', ', @_)."\n";
       return 'my $self = shift;' unless defined $proto && $proto ne '@_';
       return 'my ($self'.(length $proto ? ", ${proto}" : "").') = @_;';
     },
     sub {
       my ($name, $proto, $sub, @rest) = @_;
-no warnings 'uninitialized';
-warn "NPS: ".join(', ', @_)."\n";
+#no warnings 'uninitialized';
+#warn "NPS: ".join(', ', @_)."\n";
       if (defined $name && length $name) {
         unless ($name =~ /::/) {
           $name = "DeclareTest::${name}";
@@ -42,7 +42,7 @@ my ($test_method1, $test_method2, @test_list);
     return (ref $self).': Foo: '.$foo;
   };
 
-  method upgrade () {
+  method upgrade(){ # no spaces to make case pathological
     bless($self, 'DeclareTest2');
   };
 
@@ -82,4 +82,4 @@ is($o->$test_method1('no', 'yes'), 'value, yes', 'anon method with @_ ok');
 
 is($o->$test_method2('this'), 'DeclareTest2, this', 'anon method with proto ok');
 
-warn map { $_->() } @test_list;
+#warn map { $_->() } @test_list;
