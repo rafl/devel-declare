@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-our $VERSION = '0.001003';
+our $VERSION = '0.001004';
 
 # mirrored in Declare.xs as DD_HANDLE_*
 
@@ -120,7 +120,11 @@ sub build_sub_installer {
     package ${pack};
     my \$body;
     sub ${name} (${proto}) :lvalue {\n"
-    .'my $ret = $body->(@_);
+    .'  if (wantarray) {
+        my @ret = $body->(@_);
+        return @ret;
+      }
+      my $ret = $body->(@_);
       return $ret;
     };
     sub { ($body) = @_; };';
@@ -142,22 +146,19 @@ sub setup_declarators {
     $sub_proto =~ s/;//; $sub_proto = ';'.$sub_proto;
     #my $installer = $class->build_sub_installer($pack, $name, $proto);
     my $installer = $class->build_sub_installer($pack, $name, '@');
-    my $proto_maker = eval q!
-      sub {
-        my $body = shift;
-        sub (!.$sub_proto.q!) {
-          $body->(@_);
-        };
-      };
-    !;
     $installer->(sub :lvalue {
+#{ no warnings 'uninitialized'; warn 'INST: '.join(', ', @_)."\n"; }
       if (@_) {
         if (ref $_[0] eq 'HASH') {
           shift;
+          if (wantarray) {
+            my @ret = $run->(undef, undef, @_);
+            return @ret;
+          }
           my $r = $run->(undef, undef, @_);
           return $r;
         } else {
-          return $_[1];
+          return @_[1..$#_];
         }
       }
       return my $sv;
@@ -167,19 +168,19 @@ sub setup_declarators {
       sub {
         my ($usepack, $use, $inpack, $name, $proto) = @_;
         my $extra_code = $compile->($name, $proto);
-        my $main_handler = $proto_maker->(sub {
+        my $shift_hashref = defined(wantarray);
+        my $main_handler = sub { shift if $shift_hashref;
           ("DONE", $run->($name, $proto, @_));
-        });
+        };
         my ($name_h, $XX);
         if (defined $proto) {
           $name_h = sub :lvalue { return my $sv; };
           $XX = $main_handler;
         } elsif (defined $name && length $name) {
           $name_h = $main_handler;
-        } else {
-          $extra_code ||= '';
-          $extra_code = '}, sub {'.$extra_code;
         }
+        $extra_code ||= '';
+        $extra_code = '}, sub {'.$extra_code;
         return ($name_h, $XX, $extra_code);
       }
     ];

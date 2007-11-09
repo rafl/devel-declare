@@ -1,5 +1,7 @@
 Changes for Devel-Declare
 
+  - stop using & prototypes at all
+
 0.001004
   - correct idiotic typo if ifndef
 
