@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.001004
+  - correct idiotic typo if ifndef
+
 0.001003
   - internalise definitions for toke.c chunks to save hassle
   - make NEWSV macro defined via ifndef rather than version check in case

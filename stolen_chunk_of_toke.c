@@ -142,7 +142,7 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #endif
 /* we also need this because we define PERL_CORE so handy.h doesn't provide
    it for us (mst) */
-#ifndef
+#ifndef NEWSV
 #define NEWSV(x,len)    newSV(len)
 #endif
 
