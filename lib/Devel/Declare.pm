@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-our $VERSION = '0.001005';
+our $VERSION = '0.001006';
 
 # mirrored in Declare.xs as DD_HANDLE_*
 
