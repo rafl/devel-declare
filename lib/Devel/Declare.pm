@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-our $VERSION = '0.001004';
+our $VERSION = '0.001005';
 
 # mirrored in Declare.xs as DD_HANDLE_*
 
@@ -121,8 +121,7 @@ sub build_sub_installer {
     my \$body;
     sub ${name} (${proto}) :lvalue {\n"
     .'  if (wantarray) {
-        my @ret = $body->(@_);
-        return @ret;
+        goto &$body;
       }
       my $ret = $body->(@_);
       return $ret;
@@ -166,9 +165,8 @@ sub setup_declarators {
     $setup_for_args{$name} = [
       $flags,
       sub {
-        my ($usepack, $use, $inpack, $name, $proto) = @_;
+        my ($usepack, $use, $inpack, $name, $proto, $shift_hashref) = @_;
         my $extra_code = $compile->($name, $proto);
-        my $shift_hashref = defined(wantarray);
         my $main_handler = sub { shift if $shift_hashref;
           ("DONE", $run->($name, $proto, @_));
         };

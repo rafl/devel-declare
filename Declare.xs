@@ -208,12 +208,14 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
     retstr = POPpx;
     PUTBACK;
     if (retstr && strlen(retstr)) {
+      const int old_len = SvCUR(PL_linestr);
 #ifdef DD_DEBUG
       printf("Got string %s\n", retstr);
 #endif
-      SvGROW(PL_linestr, strlen(retstr));
+      SvGROW(PL_linestr, (STRLEN)(old_len + strlen(retstr)));
       memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
       memmove(s, retstr, strlen(retstr));
+      SvCUR_set(PL_linestr, old_len + strlen(retstr));
       PL_bufend += strlen(retstr);
 #ifdef DD_DEBUG
   printf("cur buf: %s\n", s);

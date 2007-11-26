@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.001005
+  - nasty goto &$func hack to avoid :lvalue+list context weirdness
+  - correct SvGROW invocation
   - stop using & prototypes at all
 
 0.001004

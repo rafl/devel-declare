@@ -58,7 +58,7 @@ my ($test_method1, $test_method2, @test_list);
     return join(', ', ref $self, $what);
   };
 
-  @test_list = method { 1 }, sub { 2 }, method () { 3 }, sub { 4 };
+  #@test_list = method { 1 }, sub { 2 }, method () { 3 }, sub { 4 };
 
 }
 
