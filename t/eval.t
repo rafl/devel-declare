@@ -15,7 +15,7 @@ sub handle_method {
 
 use Devel::Declare 'method' => \&handle_method;
 
-eval "method bar { 42 }";
+eval "method bar ( ) { 42 }";
 
 is( __PACKAGE__->bar, 42 );
 
