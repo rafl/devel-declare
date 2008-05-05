@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DD_HAS_TRAITS
 #if 0
 #define DD_DEBUG
 #endif
@@ -42,7 +43,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   char* save_s;
   char tmpbuf[sizeof PL_tokenbuf];
   char found_name[sizeof PL_tokenbuf];
-  char* found_proto = NULL;
+  char* found_proto = NULL, *found_traits = NULL;
   STRLEN len = 0;
   HV *stash;
   HV* is_declarator;
@@ -156,6 +157,23 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
     if (*s == '(') { /* found a prototype-ish thing */
       save_s = s;
       s = scan_str(s, FALSE, FALSE); /* no keep_quoted, no keep_delims */
+#ifdef DD_HAS_TRAITS
+      {
+          char *traitstart = s = skipspace(s);
+
+          while (*s && *s != '{') ++s;
+          if (*s) {
+              int tlen = s - traitstart;
+              Newx(found_traits, tlen+1, char);
+              Copy(traitstart, found_traits, tlen, char);
+              found_traits[tlen] = 0;
+#ifdef DD_DEBUG
+              printf("found traits..... (%s)\n", found_traits);
+#endif
+          }
+      }
+#endif
+      
       if (SvPOK(PL_lex_stuff)) {
 #ifdef DD_DEBUG
         printf("Found proto %s\n", SvPVX(PL_lex_stuff));
@@ -187,7 +205,8 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   cb_args[2] = HvNAME(PL_curstash);
   cb_args[3] = found_name;
   cb_args[4] = found_proto;
-  cb_args[5] = NULL;
+  cb_args[5] = found_traits;
+  cb_args[6] = NULL;
 
   if (len && found_proto)
     in_declare = 2;
@@ -211,6 +230,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
       const int old_len = SvCUR(PL_linestr);
 #ifdef DD_DEBUG
       printf("Got string %s\n", retstr);
+      printf("retstr len: %d, old_len %d\n", strlen(retstr), old_len);
 #endif
       SvGROW(PL_linestr, (STRLEN)(old_len + strlen(retstr)));
       memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
