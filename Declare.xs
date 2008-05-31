@@ -60,8 +60,22 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
   if (in_declare) {
     cb_args[0] = NULL;
+#ifdef DD_DEBUG
+    printf("Deconstructing declare\n");
+    printf("PL_bufptr: %s\n", PL_bufptr);
+    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+    printf("linestr: %s\n", SvPVX(PL_linestr));
+    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+#endif
     call_argv("Devel::Declare::done_declare", G_VOID|G_DISCARD, cb_args);
     in_declare--;
+#ifdef DD_DEBUG
+    printf("PL_bufptr: %s\n", PL_bufptr);
+    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+    printf("linestr: %s\n", SvPVX(PL_linestr));
+    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+    printf("actual len: %i\n", strlen(PL_bufptr));
+#endif
     return o;
   }
 
@@ -227,21 +241,39 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
     retstr = POPpx;
     PUTBACK;
     if (retstr && strlen(retstr)) {
+      const char* old_start = SvPVX(PL_linestr);
+      int start_diff;
       const int old_len = SvCUR(PL_linestr);
 #ifdef DD_DEBUG
       printf("Got string %s\n", retstr);
-      printf("retstr len: %d, old_len %d\n", strlen(retstr), old_len);
 #endif
       SvGROW(PL_linestr, (STRLEN)(old_len + strlen(retstr)));
+      if (start_diff = SvPVX(PL_linestr) - old_start) {
+#ifdef DD_DEBUG
+        printf("linestr realloc'ed, moving stuff about by %i\n", start_diff);
+#endif
+        s += start_diff;
+        PL_linestart += start_diff;
+        PL_bufptr += start_diff;
+        PL_bufend += start_diff;
+        PL_oldbufptr += start_diff;
+        PL_oldoldbufptr += start_diff;
+        if (PL_last_lop)
+          PL_last_lop += start_diff;
+        if (PL_last_uni)
+          PL_last_uni += start_diff;
+      }
       memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
       memmove(s, retstr, strlen(retstr));
       SvCUR_set(PL_linestr, old_len + strlen(retstr));
       PL_bufend += strlen(retstr);
 #ifdef DD_DEBUG
   printf("cur buf: %s\n", s);
+  printf("PL_bufptr: %s\n", PL_bufptr);
   printf("bufend at: %i\n", PL_bufend - s);
   printf("linestr: %s\n", SvPVX(PL_linestr));
   printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+  printf("tokenbuf now: %s\n", PL_tokenbuf);
 #endif
     }
   } else {
