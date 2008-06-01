@@ -29,7 +29,7 @@
 /* placeholders for PL_check entries we wrap */
 
 STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
-STATIC OP *(*dd_old_ck_lineseq)(pTHX_ OP *op);
+STATIC OP *(*dd_old_ck_entereval)(pTHX_ OP *op);
 
 /* flag to trigger removal of temporary declaree sub */
 
@@ -270,34 +270,34 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   return o;
 }
 
-STATIC OP *dd_ck_lineseq(pTHX_ OP *o) {
-  AV* pad_inject_list;
-  SV** to_inject_ref;
-  int i, pad_inject_list_last;
-
-  o = dd_old_ck_lineseq(aTHX_ o);
-
-  pad_inject_list = get_av("Devel::Declare::next_pad_inject", FALSE);
-  if (!pad_inject_list)
-    return o;
-
-  pad_inject_list_last = av_len(pad_inject_list);
-
-  if (pad_inject_list_last == -1)
-    return o;
-
-  for (i = 0; i <= pad_inject_list_last; i++) {
-    to_inject_ref = av_fetch(pad_inject_list, i, FALSE);
-    if (to_inject_ref && SvPOK(*to_inject_ref)) {
+OP* dd_pp_entereval(pTHX) {
+  dSP;
+  dPOPss;
+  STRLEN len;
+  const char* s;
+  if (SvPOK(sv)) {
 #ifdef DD_DEBUG
-  printf("Injecting %s into pad\n", SvPVX(*to_inject_ref));
+    printf("mangling eval sv\n");
 #endif
-      allocmy(SvPVX(*to_inject_ref));
+    if (SvREADONLY(sv))
+      sv = sv_2mortal(newSVsv(sv));
+    s = SvPVX(sv);
+    len = SvCUR(sv);
+    if (!len || s[len-1] != ';') {
+      if (!(SvFLAGS(sv) & SVs_TEMP))
+        sv = sv_2mortal(newSVsv(sv));
+      sv_catpvn(sv, "\n;", 2);
     }
+    SvGROW(sv, 8192);
   }
+  PUSHs(sv);
+  return PL_ppaddr[OP_ENTEREVAL](aTHX);
+}
 
-  av_clear(pad_inject_list);
-
+STATIC OP *dd_ck_entereval(pTHX_ OP *o) {
+  o = dd_old_ck_entereval(aTHX_ o); /* let the original do its job */
+  o->op_flags |= OPf_SPECIAL;
+  o->op_ppaddr = dd_pp_entereval;
   return o;
 }
 
@@ -321,5 +321,7 @@ setup()
   if (!initialized++) {
     dd_old_ck_rv2cv = PL_check[OP_RV2CV];
     PL_check[OP_RV2CV] = dd_ck_rv2cv;
+    dd_old_ck_entereval = PL_check[OP_ENTEREVAL];
+    PL_check[OP_ENTEREVAL] = dd_ck_entereval;
   }
   filter_add(dd_filter_realloc, NULL);
