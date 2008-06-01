@@ -249,7 +249,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 #endif
       SvGROW(PL_linestr, (STRLEN)(old_len + strlen(retstr)));
       if (start_diff = SvPVX(PL_linestr) - old_start) {
-        Perl_croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
+        Perl_croak(aTHX_ "forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
       }
       memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
       memmove(s, retstr, strlen(retstr));
