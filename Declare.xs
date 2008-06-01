@@ -249,19 +249,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 #endif
       SvGROW(PL_linestr, (STRLEN)(old_len + strlen(retstr)));
       if (start_diff = SvPVX(PL_linestr) - old_start) {
-#ifdef DD_DEBUG
-        printf("linestr realloc'ed, moving stuff about by %i\n", start_diff);
-#endif
-        s += start_diff;
-        PL_linestart += start_diff;
-        PL_bufptr += start_diff;
-        PL_bufend += start_diff;
-        PL_oldbufptr += start_diff;
-        PL_oldoldbufptr += start_diff;
-        if (PL_last_lop)
-          PL_last_lop += start_diff;
-        if (PL_last_uni)
-          PL_last_uni += start_diff;
+        Perl_croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
       }
       memmove(s+strlen(retstr), s, (PL_bufend - s)+1);
       memmove(s, retstr, strlen(retstr));
@@ -313,6 +301,14 @@ STATIC OP *dd_ck_lineseq(pTHX_ OP *o) {
   return o;
 }
 
+static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
+{
+  const I32 count = FILTER_READ(idx+1, sv, maxlen);
+  SvGROW(sv, 8192); /* please try not to have a line longer than this :) */
+  /* filter_del(dd_filter_realloc); */
+  return count;
+}
+
 static int initialized = 0;
 
 MODULE = Devel::Declare  PACKAGE = Devel::Declare
@@ -325,15 +321,5 @@ setup()
   if (!initialized++) {
     dd_old_ck_rv2cv = PL_check[OP_RV2CV];
     PL_check[OP_RV2CV] = dd_ck_rv2cv;
-    dd_old_ck_lineseq = PL_check[OP_LINESEQ];
-    PL_check[OP_LINESEQ] = dd_ck_lineseq;
   }
-
-void
-teardown()
-  CODE:
-  /* ensure we only uninit when number of teardown calls matches 
-     number of setup calls */
-  if (initialized && !--initialized) {
-    PL_check[OP_RV2CV] = dd_old_ck_rv2cv;
-  }
+  filter_add(dd_filter_realloc, NULL);

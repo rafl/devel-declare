@@ -63,7 +63,6 @@ sub teardown_for {
   my ($class, $target) = @_;
   delete $declarators{$target};
   delete $declarator_handlers{$target};
-  teardown();
 }
 
 my $temp_name;
