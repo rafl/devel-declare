@@ -1,5 +1,6 @@
 Changes for Devel-Declare
 
+  - don't set OPf_SPECIAL on entereval ops, mistaken cargo cult from autobox
   - fix traits code to work on older 5.8.x perls
 
 0.001008

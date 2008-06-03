@@ -296,7 +296,6 @@ OP* dd_pp_entereval(pTHX) {
 
 STATIC OP *dd_ck_entereval(pTHX_ OP *o) {
   o = dd_old_ck_entereval(aTHX_ o); /* let the original do its job */
-  o->op_flags |= OPf_SPECIAL;
   o->op_ppaddr = dd_pp_entereval;
   return o;
 }
