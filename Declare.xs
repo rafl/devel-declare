@@ -178,7 +178,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
           while (*s && *s != '{') ++s;
           if (*s) {
               int tlen = s - traitstart;
-              Newx(found_traits, tlen+1, char);
+              New(0, found_traits, tlen+1, char);
               Copy(traitstart, found_traits, tlen, char);
               found_traits[tlen] = 0;
 #ifdef DD_DEBUG
