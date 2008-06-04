@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.001010
+  - fix traits code, again, so it compiles on 5.10.
+
+0.001009
   - only mangle evals if o->op_ppaddr is actually PL_ppaddr[OP_ENTERVAL]
   - don't set OPf_SPECIAL on entereval ops, mistaken cargo cult from autobox
   - fix traits code to work on older 5.8.x perls

@@ -8,7 +8,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef Newx
+# define Newx(v,n,t) New(0,v,n,t)
+#endif /* !Newx */
+
+#if 1
 #define DD_HAS_TRAITS
+#endif
+
 #if 0
 #define DD_DEBUG
 #endif
@@ -178,7 +185,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
           while (*s && *s != '{') ++s;
           if (*s) {
               int tlen = s - traitstart;
-              New(0, found_traits, tlen+1, char);
+              Newx(found_traits, tlen+1, char);
               Copy(traitstart, found_traits, tlen, char);
               found_traits[tlen] = 0;
 #ifdef DD_DEBUG
