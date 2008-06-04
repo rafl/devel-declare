@@ -58,6 +58,8 @@ my ($test_method1, $test_method2, @test_list);
     return join(', ', ref $self, $what);
   };
 
+  method main () { return "main"; };
+
   #@test_list = method { 1 }, sub { 2 }, method () { 3 }, sub { 4 };
 
 }
@@ -71,6 +73,8 @@ isa_ok($o, 'DeclareTest');
 is($o->{attr}, 'value', '@_ args ok');
 
 is($o->foo('yay'), 'DeclareTest: Foo: yay', 'method with argument ok');
+
+is($o->main, 'main', 'declaration of package named method ok');
 
 $o->upgrade;
 

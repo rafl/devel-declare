@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.001011
+  - add support for 'method main' and other package names
+
 0.001010
   - fix traits code, again, so it compiles on 5.10.
 

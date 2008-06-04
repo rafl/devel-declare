@@ -33,16 +33,13 @@
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
 
-/* placeholders for PL_check entries we wrap */
-
-STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
-STATIC OP *(*dd_old_ck_entereval)(pTHX_ OP *op);
-
 /* flag to trigger removal of temporary declaree sub */
 
 static int in_declare = 0;
 
 /* replacement PL_check rv2cv entry */
+
+STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
 
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   OP* kid;
@@ -156,6 +153,12 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
     s = skipspace(s);
 
     DD_DEBUG_S
+
+    /* kill the :: added in the ck_const */
+    if (*s == ':')
+      *s++ = ' ';
+    if (*s == ':')
+      *s++ = ' ';
 
     /* arg 4 is allow_package */
 
@@ -277,6 +280,8 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   return o;
 }
 
+STATIC OP *(*dd_old_ck_entereval)(pTHX_ OP *op);
+
 OP* dd_pp_entereval(pTHX) {
   dSP;
   dPOPss;
@@ -316,6 +321,102 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
   return count;
 }
 
+STATIC OP *(*dd_old_ck_const)(pTHX_ OP*op);
+
+STATIC OP *dd_ck_const(pTHX_ OP *o) {
+  HV* is_declarator;
+  SV** is_declarator_pack_ref;
+  HV* is_declarator_pack_hash;
+  SV** is_declarator_flag_ref;
+  int dd_flags;
+  char* s;
+  char tmpbuf[sizeof PL_tokenbuf];
+  char found_name[sizeof PL_tokenbuf];
+  STRLEN len = 0;
+
+  o = dd_old_ck_const(aTHX_ o); /* let the original do its job */
+
+  is_declarator = get_hv("Devel::Declare::declarators", FALSE);
+
+  is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
+                             strlen(HvNAME(PL_curstash)), FALSE);
+
+  if (!is_declarator_pack_ref || !SvROK(*is_declarator_pack_ref))
+    return o; /* not a hashref */
+
+  is_declarator_pack_hash = (HV*) SvRV(*is_declarator_pack_ref);
+
+  /* don't try and look this up if it's not a string const */
+  if (!SvPOK(cSVOPo->op_sv))
+    return o;
+
+  is_declarator_flag_ref = hv_fetch(
+    is_declarator_pack_hash, SvPVX(cSVOPo->op_sv),
+    strlen(SvPVX(cSVOPo->op_sv)), FALSE
+  );
+
+  /* requires SvIOK as well as TRUE since flags not being an int is useless */
+
+  if (!is_declarator_flag_ref
+        || !SvIOK(*is_declarator_flag_ref) 
+        || !SvTRUE(*is_declarator_flag_ref))
+    return o;
+
+  dd_flags = SvIVX(*is_declarator_flag_ref);
+
+  if (!(dd_flags & DD_HANDLE_NAME))
+    return o; /* if we're not handling name, method intuiting not an issue */
+
+#ifdef DD_DEBUG
+  printf("Think I found a declarator %s\n", PL_tokenbuf);
+  printf("linestr: %s\n", SvPVX(PL_linestr));
+#endif
+
+  s = PL_bufptr;
+
+  while (s < PL_bufend && isSPACE(*s)) s++;
+  if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
+    s += strlen(PL_tokenbuf);
+
+  DD_DEBUG_S
+
+  /* find next word */
+
+  s = skipspace(s);
+
+  DD_DEBUG_S
+
+  /* arg 4 is allow_package */
+
+  s = scan_word(s, tmpbuf, sizeof tmpbuf, dd_flags & DD_HANDLE_PACKAGE, &len);
+
+  DD_DEBUG_S
+
+  if (len) {
+    const char* old_start = SvPVX(PL_linestr);
+    int start_diff;
+    const int old_len = SvCUR(PL_linestr);
+
+    strcpy(found_name, tmpbuf);
+#ifdef DD_DEBUG
+    printf("Found %s\n", found_name);
+#endif
+
+    s -= len;
+    SvGROW(PL_linestr, (STRLEN)(old_len + 2));
+    if (start_diff = SvPVX(PL_linestr) - old_start) {
+      Perl_croak(aTHX_ "forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
+    }
+    memmove(s+2, s, (PL_bufend - s)+1);
+    *s = ':';
+    s++;
+    *s = ':';
+    SvCUR_set(PL_linestr, old_len + 2);
+    PL_bufend += 2;
+  }
+  return o;  
+}
+
 static int initialized = 0;
 
 MODULE = Devel::Declare  PACKAGE = Devel::Declare
@@ -330,5 +431,7 @@ setup()
     PL_check[OP_RV2CV] = dd_ck_rv2cv;
     dd_old_ck_entereval = PL_check[OP_ENTEREVAL];
     PL_check[OP_ENTEREVAL] = dd_ck_entereval;
+    dd_old_ck_const = PL_check[OP_CONST];
+    PL_check[OP_CONST] = dd_ck_const;
   }
   filter_add(dd_filter_realloc, NULL);
