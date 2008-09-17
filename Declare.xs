@@ -135,6 +135,40 @@ void dd_set_linestr(pTHX_ char* new_value) {
   PL_bufend = SvPVX(PL_linestr) + new_len;
 }
 
+char* dd_move_past_token (pTHX_ char* s) {
+
+  /*
+   *   buffer will be at the beginning of the declarator, -unless- the
+   *   declarator is at EOL in which case it'll be the next useful line
+   *   so we don't short-circuit out if we don't find the declarator
+   */
+
+  while (s < PL_bufend && isSPACE(*s)) s++;
+  if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
+    s += strlen(PL_tokenbuf);
+  return s;
+}
+
+int dd_toke_scan_word(pTHX_ int offset, int handle_package) {
+  char tmpbuf[sizeof PL_tokenbuf];
+  char* base_s = SvPVX(PL_linestr) + offset;
+  STRLEN len;
+  char* s = scan_word(base_s, tmpbuf, sizeof tmpbuf, handle_package, &len);
+  return s - base_s;
+}
+
+int dd_toke_scan_str(pTHX_ int offset) {
+  char* base_s = SvPVX(PL_linestr) + offset;
+  char* s = scan_str(base_s, FALSE, FALSE);
+  return s - base_s;
+}
+
+int dd_toke_skipspace(pTHX_ int offset) {
+  char* base_s = SvPVX(PL_linestr) + offset;
+  char* s = skipspace(base_s);
+  return s - base_s;
+}
+
 /* replacement PL_check rv2cv entry */
 
 STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
@@ -208,15 +242,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   printf("PL_tokenbuf: %s\n", PL_tokenbuf);
 #endif
 
-  /*
-   *   buffer will be at the beginning of the declarator, -unless- the
-   *   declarator is at EOL in which case it'll be the next useful line
-   *   so we don't short-circuit out if we don't find the declarator
-   */
-
-  while (s < PL_bufend && isSPACE(*s)) s++;
-  if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
-    s += strlen(PL_tokenbuf);
+  s = dd_move_past_token(aTHX_ s);
 
   DD_DEBUG_S
 
@@ -426,9 +452,7 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
 
   s = PL_bufptr;
 
-  while (s < PL_bufend && isSPACE(*s)) s++;
-  if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
-    s += strlen(PL_tokenbuf);
+  s = dd_move_past_token(aTHX_ s);
 
   /* dd_linestr_callback(aTHX_ "const", SvPVX(cSVOPo->op_sv), s); */
 
@@ -494,5 +518,31 @@ char*
 get_linestr()
   CODE:
     RETVAL = dd_get_linestr(aTHX);
+  OUTPUT:
+    RETVAL
+
+void
+set_linestr(char* new_value)
+  CODE:
+    dd_set_linestr(aTHX_ new_value);
+
+int
+toke_scan_word(int offset, int handle_package)
+  CODE:
+    RETVAL = dd_toke_scan_word(aTHX_ offset, handle_package);
+  OUTPUT:
+    RETVAL
+
+int
+toke_scan_str(int offset);
+  CODE:
+    RETVAL = dd_toke_scan_str(aTHX_ offset);
+  OUTPUT:
+    RETVAL
+
+int
+toke_skipspace(int offset)
+  CODE:
+    RETVAL = dd_toke_skipspace(aTHX_ offset);
   OUTPUT:
     RETVAL
