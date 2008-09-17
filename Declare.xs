@@ -51,6 +51,8 @@ int dd_is_declarator(pTHX_ char* name) {
   if (!is_declarator)
     return -1;
 
+  /* $declarators{$current_package_name} */
+
   is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
                              strlen(HvNAME(PL_curstash)), FALSE);
 
@@ -58,6 +60,8 @@ int dd_is_declarator(pTHX_ char* name) {
     return -1; /* not a hashref */
 
   is_declarator_pack_hash = (HV*) SvRV(*is_declarator_pack_ref);
+
+  /* $declarators{$current_package_name}{$name} */
 
   is_declarator_flag_ref = hv_fetch(
     is_declarator_pack_hash, name,
@@ -74,6 +78,61 @@ int dd_is_declarator(pTHX_ char* name) {
   dd_flags = SvIVX(*is_declarator_flag_ref);
 
   return dd_flags;
+}
+
+/* callback thingy */
+
+void dd_linestr_callback (pTHX_ char* type, char* name, char* s) {
+
+  char* linestr = SvPVX(PL_linestr);
+  int offset = s - linestr;
+
+  char* new_linestr;
+  int count;
+
+  dSP;
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+  XPUSHs(sv_2mortal(newSVpv(type, 0)));
+  XPUSHs(sv_2mortal(newSVpv(name, 0)));
+  XPUSHs(sv_2mortal(newSViv(offset)));
+  PUTBACK;
+
+  count = call_pv("Devel::Declare::linestr_callback", G_SCALAR);
+
+  SPAGAIN;
+
+  if (count != 1)
+    Perl_croak(aTHX_ "linestr_callback didn't return a value, bailing out");
+
+  printf("linestr_callback returned: %s\n", POPp);
+
+  PUTBACK;
+  FREETMPS;
+  LEAVE;
+}
+
+char* dd_get_linestr(pTHX) {
+  return SvPVX(PL_linestr);
+}
+
+void dd_set_linestr(pTHX_ char* new_value) {
+  int new_len = strlen(new_value);
+  char* old_linestr = SvPVX(PL_linestr);
+
+  SvGROW(PL_linestr, strlen(new_value));
+
+  if (SvPVX(PL_linestr) != old_linestr)
+    Perl_croak(aTHX_ "forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
+
+  memcpy(SvPVX(PL_linestr), new_value, new_len+1);
+
+  SvCUR_set(PL_linestr, new_len);
+
+  PL_bufend = SvPVX(PL_linestr) + new_len;
 }
 
 /* replacement PL_check rv2cv entry */
@@ -371,6 +430,8 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
   if (memEQ(s, PL_tokenbuf, strlen(PL_tokenbuf)))
     s += strlen(PL_tokenbuf);
 
+  /* dd_linestr_callback(aTHX_ "const", SvPVX(cSVOPo->op_sv), s); */
+
   DD_DEBUG_S
 
   /* find next word */
@@ -428,3 +489,10 @@ setup()
     PL_check[OP_CONST] = dd_ck_const;
   }
   filter_add(dd_filter_realloc, NULL);
+
+char*
+get_linestr()
+  CODE:
+    RETVAL = dd_get_linestr(aTHX);
+  OUTPUT:
+    RETVAL

@@ -196,6 +196,20 @@ sub install_declarator {
   });
 }
 
+sub linestr_callback_const {
+  warn "Linestr_callback_const: @_\n";
+  my $l = get_linestr();
+  warn "linestr: ${l}\n";
+  warn "w/offset: ".substr($l, $_[1])."\n";
+}
+
+sub linestr_callback {
+  my $type = shift;
+  my $meth = "linestr_callback_${type}";
+  __PACKAGE__->can($meth)->(@_);
+  return 'foo';
+}
+
 =head1 NAME
 
 Devel::Declare - 
