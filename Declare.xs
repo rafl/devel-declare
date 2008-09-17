@@ -37,6 +37,45 @@
 
 static int in_declare = 0;
 
+/* thing that decides whether we're dealing with a declarator */
+
+int dd_is_declarator(pTHX_ char* name) {
+  HV* is_declarator;
+  SV** is_declarator_pack_ref;
+  HV* is_declarator_pack_hash;
+  SV** is_declarator_flag_ref;
+  int dd_flags;
+
+  is_declarator = get_hv("Devel::Declare::declarators", FALSE);
+
+  if (!is_declarator)
+    return -1;
+
+  is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
+                             strlen(HvNAME(PL_curstash)), FALSE);
+
+  if (!is_declarator_pack_ref || !SvROK(*is_declarator_pack_ref))
+    return -1; /* not a hashref */
+
+  is_declarator_pack_hash = (HV*) SvRV(*is_declarator_pack_ref);
+
+  is_declarator_flag_ref = hv_fetch(
+    is_declarator_pack_hash, name,
+    strlen(name), FALSE
+  );
+
+  /* requires SvIOK as well as TRUE since flags not being an int is useless */
+
+  if (!is_declarator_flag_ref
+        || !SvIOK(*is_declarator_flag_ref) 
+        || !SvTRUE(*is_declarator_flag_ref))
+    return -1;
+
+  dd_flags = SvIVX(*is_declarator_flag_ref);
+
+  return dd_flags;
+}
+
 /* replacement PL_check rv2cv entry */
 
 STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
@@ -49,11 +88,6 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   char found_name[sizeof PL_tokenbuf];
   char* found_proto = NULL, *found_traits = NULL;
   STRLEN len = 0;
-  HV *stash;
-  HV* is_declarator;
-  SV** is_declarator_pack_ref;
-  HV* is_declarator_pack_hash;
-  SV** is_declarator_flag_ref;
   int dd_flags;
   char* cb_args[6];
   dSP; /* define stack pointer for later call stuff */
@@ -91,36 +125,17 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   if (PL_lex_state != LEX_NORMAL && PL_lex_state != LEX_INTERPNORMAL)
     return o; /* not lexing? */
 
-  stash = GvSTASH(kGVOP_gv);
+  /* I was doing this, but the CONST wrap can't so it didn't gain anything
+  stash = GvSTASH(kGVOP_gv); */
 
 #ifdef DD_DEBUG
-  printf("Checking GV %s -> %s\n", HvNAME(stash), GvNAME(kGVOP_gv));
+  printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
 #endif
 
-  is_declarator = get_hv("Devel::Declare::declarators", FALSE);
+  dd_flags = dd_is_declarator(aTHX_ GvNAME(kGVOP_gv));
 
-  if (!is_declarator)
+  if (dd_flags == -1)
     return o;
-
-  is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(stash),
-                             strlen(HvNAME(stash)), FALSE);
-
-  if (!is_declarator_pack_ref || !SvROK(*is_declarator_pack_ref))
-    return o; /* not a hashref */
-
-  is_declarator_pack_hash = (HV*) SvRV(*is_declarator_pack_ref);
-
-  is_declarator_flag_ref = hv_fetch(is_declarator_pack_hash, GvNAME(kGVOP_gv),
-                                strlen(GvNAME(kGVOP_gv)), FALSE);
-
-  /* requires SvIOK as well as TRUE since flags not being an int is useless */
-
-  if (!is_declarator_flag_ref
-        || !SvIOK(*is_declarator_flag_ref) 
-        || !SvTRUE(*is_declarator_flag_ref))
-    return o;
-
-  dd_flags = SvIVX(*is_declarator_flag_ref);
 
 #ifdef DD_DEBUG
   printf("dd_flags are: %i\n", dd_flags);
@@ -224,7 +239,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 #ifdef DD_DEBUG
   printf("Calling init_declare\n");
 #endif
-  cb_args[0] = HvNAME(stash);
+  cb_args[0] = HvNAME(PL_curstash);
   cb_args[1] = GvNAME(kGVOP_gv);
   cb_args[2] = HvNAME(PL_curstash);
   cb_args[3] = found_name;
@@ -245,6 +260,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   printf("linestr: %s\n", SvPVX(PL_linestr));
   printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
 #endif
+  
   if (*s++ == '{') {
     call_argv("Devel::Declare::init_declare", G_SCALAR, cb_args);
     SPAGAIN;
