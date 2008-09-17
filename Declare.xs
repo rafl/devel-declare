@@ -340,10 +340,6 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
 STATIC OP *(*dd_old_ck_const)(pTHX_ OP*op);
 
 STATIC OP *dd_ck_const(pTHX_ OP *o) {
-  HV* is_declarator;
-  SV** is_declarator_pack_ref;
-  HV* is_declarator_pack_hash;
-  SV** is_declarator_flag_ref;
   int dd_flags;
   char* s;
   char tmpbuf[sizeof PL_tokenbuf];
@@ -352,33 +348,14 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
 
   o = dd_old_ck_const(aTHX_ o); /* let the original do its job */
 
-  is_declarator = get_hv("Devel::Declare::declarators", FALSE);
-
-  is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
-                             strlen(HvNAME(PL_curstash)), FALSE);
-
-  if (!is_declarator_pack_ref || !SvROK(*is_declarator_pack_ref))
-    return o; /* not a hashref */
-
-  is_declarator_pack_hash = (HV*) SvRV(*is_declarator_pack_ref);
-
   /* don't try and look this up if it's not a string const */
   if (!SvPOK(cSVOPo->op_sv))
     return o;
 
-  is_declarator_flag_ref = hv_fetch(
-    is_declarator_pack_hash, SvPVX(cSVOPo->op_sv),
-    strlen(SvPVX(cSVOPo->op_sv)), FALSE
-  );
+  dd_flags = dd_is_declarator(aTHX_ SvPVX(cSVOPo->op_sv));
 
-  /* requires SvIOK as well as TRUE since flags not being an int is useless */
-
-  if (!is_declarator_flag_ref
-        || !SvIOK(*is_declarator_flag_ref) 
-        || !SvTRUE(*is_declarator_flag_ref))
+  if (dd_flags == -1)
     return o;
-
-  dd_flags = SvIVX(*is_declarator_flag_ref);
 
   if (!(dd_flags & DD_HANDLE_NAME))
     return o; /* if we're not handling name, method intuiting not an issue */
