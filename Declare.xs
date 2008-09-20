@@ -287,6 +287,12 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
 
   o = dd_old_ck_const(aTHX_ o); /* let the original do its job */
 
+  /* if this is set, we just grabbed a delimited string or something,
+     not a bareword, so NO TOUCHY */
+
+  if (PL_lex_stuff)
+    return o;
+
   /* don't try and look this up if it's not a string const */
   if (!SvPOK(cSVOPo->op_sv))
     return o;
