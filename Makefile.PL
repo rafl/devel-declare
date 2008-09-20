@@ -7,6 +7,7 @@ all_from 'lib/Devel/Declare.pm';
 
 requires 'Scalar::Util';
 build_requires 'Test::More';
+build_requires 'Scope::Guard';
 
 WriteMakefile(
   dist => {

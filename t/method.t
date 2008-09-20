@@ -1,5 +1,4 @@
 use Devel::Declare ();
-use Scope::Guard;
 
 {
   package MethodHandlers;
@@ -50,48 +49,43 @@ use Scope::Guard;
     Devel::Declare::shadow_sub("${pack}::${Declarator}", $_[0]);
   }
 
-  sub inject_str {
-    my $linestr = Devel::Declare::get_linestr;
-    substr($linestr, $Offset, 0) = $_[0];
-    Devel::Declare::set_linestr($linestr);
-  }
+  # undef  -> my ($self) = shift;
+  # ''     -> my ($self) = @_;
+  # '$foo' -> my ($self, $foo) = @_;
 
-  sub strip_str {
-    my $linestr = Devel::Declare::get_linestr;
-    if (substr($linestr, $Offset, length($_[0])) eq $_[0]) {
-      substr($linestr, $Offset, length($_[0])) = '';
-      Devel::Declare::set_linestr($linestr);
-      return 1;
+  sub make_proto_unwrap {
+    my ($proto) = @_;
+    my $inject = 'my ($self';
+    if (defined $proto) {
+      $inject .= ", $proto" if length($proto);
+      $inject .= ') = @_; ';
+    } else {
+      $inject .= ') = shift;';
     }
-    return 0;
+    return $inject;
   }
 
-  sub parser {
-    my $pack = shift;
-    local ($Declarator, $Offset) = @_;
-    skip_declarator;
+  sub inject_if_block {
+    my $inject = shift;
     skipspace;
-    my $name = strip_name;
-    skipspace if defined($name);
-    my $proto = strip_proto;
-    skipspace if defined($proto);
     my $linestr = Devel::Declare::get_linestr;
     if (substr($linestr, $Offset, 1) eq '{') {
-      my $inject = 'my ($self';
-      if (defined $proto) {
-        $inject .= ", $proto" if length($proto);
-        $inject .= ') = @_; ';
-      } else {
-        $inject .= ') = shift;';
-      }
-      if (defined $name) {
-        $inject = ' BEGIN { MethodHandlers::inject_scope }; '.$inject;
-      }
       substr($linestr, $Offset+1, 0) = $inject;
       Devel::Declare::set_linestr($linestr);
     }
+  }
+
+  sub parser {
+    local ($Declarator, $Offset) = @_;
+    skip_declarator;
+    my $name = strip_name;
+    my $proto = strip_proto;
+    inject_if_block(
+      make_proto_unwrap($proto)
+    );
     if (defined $name) {
-      $name = join('::', $pack, $name) unless ($name =~ /::/);
+      $name = join('::', Devel::Declare::get_curstash_name(), $name)
+        unless ($name =~ /::/);
       shadow(sub (&) { no strict 'refs'; *{$name} = shift; });
     } else {
       shadow(sub (&) { shift });
@@ -119,26 +113,26 @@ my ($test_method1, $test_method2, @test_list);
   BEGIN {
     Devel::Declare->setup_for(
       __PACKAGE__,
-      { method => { const => sub { MethodHandlers::parser(__PACKAGE__, @_) } } }
+      { method => { const => \&MethodHandlers::parser } }
     );
   }
 
   method new {
     my $class = ref $self || $self;
     return bless({ @_ }, $class);
-  }
+  };
 
   method foo ($foo) {
     return (ref $self).': Foo: '.$foo;
-  }
+  };
 
   method upgrade(){ # no spaces to make case pathological
     bless($self, 'DeclareTest2');
-  }
+  };
 
   method DeclareTest2::bar () {
     return 'DeclareTest2: bar';
-  }
+  };
 
   $test_method1 = method {
     return join(', ', $self->{attr}, $_[1]);
@@ -148,7 +142,7 @@ my ($test_method1, $test_method2, @test_list);
     return join(', ', ref $self, $what);
   };
 
-  method main () { return "main"; }
+  method main () { return "main"; };
 
   @test_list = (method { 1 }, sub { 2 }, method () { 3 }, sub { 4 });
 

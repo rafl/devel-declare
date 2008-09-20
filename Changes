@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.002000
+  - rewrite guts into perl, add tests for new declaration style
+
 0.001011
   - add support for 'method main' and other package names
 

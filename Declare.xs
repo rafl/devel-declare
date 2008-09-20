@@ -12,17 +12,9 @@
 # define Newx(v,n,t) New(0,v,n,t)
 #endif /* !Newx */
 
-#if 1
-#define DD_HAS_TRAITS
-#endif
-
 #if 0
 #define DD_DEBUG
 #endif
-
-#define DD_HANDLE_NAME 1
-#define DD_HANDLE_PROTO 2
-#define DD_HANDLE_PACKAGE 8
 
 #ifdef DD_DEBUG
 #define DD_DEBUG_S printf("Buffer: %s\n", s);
