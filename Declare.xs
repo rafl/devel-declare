@@ -12,17 +12,9 @@
 # define Newx(v,n,t) New(0,v,n,t)
 #endif /* !Newx */
 
-#if 1
-#define DD_HAS_TRAITS
-#endif
-
 #if 0
 #define DD_DEBUG
 #endif
-
-#define DD_HANDLE_NAME 1
-#define DD_HANDLE_PROTO 2
-#define DD_HANDLE_PACKAGE 8
 
 #ifdef DD_DEBUG
 #define DD_DEBUG_S printf("Buffer: %s\n", s);
@@ -82,10 +74,10 @@ int dd_is_declarator(pTHX_ char* name) {
 
 /* callback thingy */
 
-void dd_linestr_callback (pTHX_ char* type, char* name, char* s) {
+void dd_linestr_callback (pTHX_ char* type, char* name) {
 
   char* linestr = SvPVX(PL_linestr);
-  int offset = s - linestr;
+  int offset = PL_bufptr - linestr;
 
   dSP;
 
@@ -136,7 +128,7 @@ char* dd_get_curstash_name(pTHX) {
   return HvNAME(PL_curstash);
 }
 
-char* dd_move_past_token (pTHX_ char* s) {
+char* dd_move_past_token(pTHX_ char* s) {
 
   /*
    *   buffer will be at the beginning of the declarator, -unless- the
@@ -150,7 +142,7 @@ char* dd_move_past_token (pTHX_ char* s) {
   return s;
 }
 
-int dd_toke_move_past_token (pTHX_ int offset) {
+int dd_toke_move_past_token(pTHX_ int offset) {
   char* base_s = SvPVX(PL_linestr) + offset;
   char* s = dd_move_past_token(aTHX_ base_s);
   return s - base_s;
@@ -182,38 +174,16 @@ STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
 
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   OP* kid;
-  char* s;
-  char* save_s;
-  char tmpbuf[sizeof PL_tokenbuf];
-  char found_name[sizeof PL_tokenbuf];
-  char* found_proto = NULL, *found_traits = NULL;
-  STRLEN len = 0;
   int dd_flags;
   char* cb_args[6];
-  dSP; /* define stack pointer for later call stuff */
-  char* retstr;
-  STRLEN n_a; /* for POPpx */
 
   o = dd_old_ck_rv2cv(aTHX_ o); /* let the original do its job */
 
   if (in_declare) {
-    cb_args[0] = NULL;
-#ifdef DD_DEBUG
-    printf("Deconstructing declare\n");
-    printf("PL_bufptr: %s\n", PL_bufptr);
-    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-    printf("linestr: %s\n", SvPVX(PL_linestr));
-    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-#endif
-    call_argv("Devel::Declare::done_declare", G_VOID|G_DISCARD, cb_args);
+    dSP;
+    PUSHMARK(SP);
+    call_pv("Devel::Declare::done_declare", G_VOID|G_DISCARD);
     in_declare--;
-#ifdef DD_DEBUG
-    printf("PL_bufptr: %s\n", PL_bufptr);
-    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-    printf("linestr: %s\n", SvPVX(PL_linestr));
-    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-    printf("actual len: %i\n", strlen(PL_bufptr));
-#endif
     return o;
   }
 
@@ -225,31 +195,12 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   if (PL_lex_state != LEX_NORMAL && PL_lex_state != LEX_INTERPNORMAL)
     return o; /* not lexing? */
 
-  /* I was doing this, but the CONST wrap can't so it didn't gain anything
-  stash = GvSTASH(kGVOP_gv); */
-
-#ifdef DD_DEBUG
-  printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
-#endif
-
   dd_flags = dd_is_declarator(aTHX_ GvNAME(kGVOP_gv));
 
   if (dd_flags == -1)
     return o;
 
-#ifdef DD_DEBUG
-  printf("dd_flags are: %i\n", dd_flags);
-#endif
-
-  s = PL_bufptr; /* copy the current buffer pointer */
-
-  DD_DEBUG_S
-
-#ifdef DD_DEBUG
-  printf("PL_tokenbuf: %s\n", PL_tokenbuf);
-#endif
-
-  dd_linestr_callback(aTHX_ "rv2cv", GvNAME(kGVOP_gv), s);
+  dd_linestr_callback(aTHX_ "rv2cv", GvNAME(kGVOP_gv));
 
   return o;
 }
@@ -315,9 +266,7 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
   if (dd_flags == -1)
     return o;
 
-  s = PL_bufptr;
-
-  dd_linestr_callback(aTHX_ "const", name, s);
+  dd_linestr_callback(aTHX_ "const", name);
 
   return o;  
 }
