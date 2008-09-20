@@ -196,18 +196,79 @@ sub install_declarator {
   });
 }
 
+sub linestr_callback_rv2cv {
+  my ($name, $offset) = @_;
+  $offset += toke_move_past_token($offset);
+  my $pack = get_curstash_name();
+  my $flags = $declarators{$pack}{$name};
+  my ($found_name, $found_proto);
+  my $in_declare = 0;
+  if ($flags & DECLARE_NAME) {
+    $offset += toke_skipspace($offset);
+    my $linestr = get_linestr();
+    if (substr($linestr, $offset, 2) eq '::') {
+      substr($linestr, $offset, 2) = '';
+      set_linestr($linestr);
+    }
+    if (my $len = toke_scan_word($offset, $flags & DECLARE_PACKAGE)) {
+      $found_name = substr($linestr, $offset, $len);
+      $offset += $len;
+      $in_declare++;
+    }
+  }
+  if ($flags & DECLARE_PROTO) {
+    $offset += toke_skipspace($offset);
+    my $linestr = get_linestr();
+    if (substr($linestr, $offset, 1) eq '(') {
+      my $length = toke_scan_str($offset);
+      $found_proto = get_lex_stuff();
+      clear_lex_stuff();
+      my $replace =
+        ($found_name ? ' ' : '=')
+        .'X'.(' ' x length($found_proto));
+      $linestr = get_linestr();
+      substr($linestr, $offset, $length) = $replace;
+      set_linestr($linestr);
+      $offset += $length;
+      $in_declare++;
+    }
+  }
+  my @args = ($pack, $name, $pack, $found_name, $found_proto);
+  set_in_declare($in_declare);
+  $offset += toke_skipspace($offset);
+  my $linestr = get_linestr();
+  if (substr($linestr, $offset, 1) eq '{') {
+    my $ret = init_declare(@args);
+    $offset++;
+    if (defined $ret && length $ret) {
+      substr($linestr, $offset, 0) = $ret;
+      set_linestr($linestr);
+    }
+  } else {
+    init_declare(@args);
+  }
+  #warn "linestr now ${linestr}";
+}
+
 sub linestr_callback_const {
-  warn "Linestr_callback_const: @_\n";
-  my $l = get_linestr();
-  warn "linestr: ${l}\n";
-  warn "w/offset: ".substr($l, $_[1])."\n";
+  my ($name, $offset) = @_;
+  my $pack = get_curstash_name();
+  my $flags = $declarators{$pack}{$name};
+  if ($flags & DECLARE_NAME) {
+    $offset += toke_move_past_token($offset);
+    $offset += toke_skipspace($offset);
+    if (toke_scan_word($offset, $flags & DECLARE_PACKAGE)) {
+      my $linestr = get_linestr();
+      substr($linestr, $offset, 0) = '::';
+      set_linestr($linestr);
+    }
+  }
 }
 
 sub linestr_callback {
   my $type = shift;
   my $meth = "linestr_callback_${type}";
   __PACKAGE__->can($meth)->(@_);
-  return 'foo';
 }
 
 =head1 NAME
