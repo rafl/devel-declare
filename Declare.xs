@@ -136,6 +136,11 @@ char* dd_get_curstash_name(pTHX) {
   return HvNAME(PL_curstash);
 }
 
+int dd_get_linestr_offset(pTHX) {
+  char* linestr = SvPVX(PL_linestr);
+  return PL_bufptr - linestr;
+}
+
 char* dd_move_past_token (pTHX_ char* s) {
 
   /*
@@ -356,6 +361,13 @@ char*
 get_curstash_name()
   CODE:
     RETVAL = dd_get_curstash_name(aTHX);
+  OUTPUT:
+    RETVAL
+
+int
+get_linestr_offset()
+  CODE:
+    RETVAL = dd_get_linestr_offset(aTHX);
   OUTPUT:
     RETVAL
 
