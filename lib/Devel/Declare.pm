@@ -51,8 +51,11 @@ sub setup_for {
     } elsif (ref($info) eq 'CODE') {
       $flags = DECLARE_NAME;
       $sub = $info;
+    } elsif (ref($info) eq 'HASH') {
+      $flags = 1;
+      $sub = $info;
     } else {
-      die "Info for sub ${key} must be [ \$flags, \$sub ] or \$sub";
+      die "Info for sub ${key} must be [ \$flags, \$sub ] or \$sub or handler hashref";
     }
     $declarators{$target}{$key} = $flags;
     $declarator_handlers{$target}{$key} = $sub;
@@ -77,26 +80,29 @@ sub init_declare {
   ($temp_name, $temp_save) = ([], []);
   if ($name) {
     $name = "${inpack}::${name}" unless $name =~ /::/;
-    push(@$temp_name, $name);
-    no strict 'refs';
-    push(@$temp_save, \&{$name});
-    no warnings 'redefine';
-    no warnings 'prototype';
-    *{$name} = $name_h;
+    shadow_sub($name, $name_h);
   }
   if ($XX_h) {
-    push(@$temp_name, "${inpack}::X");
-    no strict 'refs';
-    push(@$temp_save, \&{"${inpack}::X"});
-    no warnings 'redefine';
-    no warnings 'prototype';
-    *{"${inpack}::X"} = $XX_h;
+    shadow_sub("${inpack}::X", $XX_h);
   }
   if (defined wantarray) {
     return $extra_code || '0;';
   } else {
     return;
   }
+}
+
+sub shadow_sub {
+  my ($name, $cr) = @_;
+  push(@$temp_name, $name);
+  no strict 'refs';
+  my ($pack, $pname) = ($name =~ m/(.+)::([^:]+)/);
+  push(@$temp_save, $pack->can($pname));
+  delete ${"${pack}::"}{$pname};
+  no warnings 'redefine';
+  no warnings 'prototype';
+  *{$name} = $cr;
+  set_in_declare(~~@{$temp_name||[]});
 }
 
 sub done_declare {
@@ -111,6 +117,7 @@ sub done_declare {
     no warnings 'prototype';
     *{"${temp_pack}::${name}"} = $saved;
   }
+  set_in_declare(~~@{$temp_name||[]});
 }
 
 sub build_sub_installer {
@@ -202,7 +209,6 @@ sub linestr_callback_rv2cv {
   my $pack = get_curstash_name();
   my $flags = $declarators{$pack}{$name};
   my ($found_name, $found_proto);
-  my $in_declare = 0;
   if ($flags & DECLARE_NAME) {
     $offset += toke_skipspace($offset);
     my $linestr = get_linestr();
@@ -213,7 +219,6 @@ sub linestr_callback_rv2cv {
     if (my $len = toke_scan_word($offset, $flags & DECLARE_PACKAGE)) {
       $found_name = substr($linestr, $offset, $len);
       $offset += $len;
-      $in_declare++;
     }
   }
   if ($flags & DECLARE_PROTO) {
@@ -230,11 +235,9 @@ sub linestr_callback_rv2cv {
       substr($linestr, $offset, $length) = $replace;
       set_linestr($linestr);
       $offset += $length;
-      $in_declare++;
     }
   }
   my @args = ($pack, $name, $pack, $found_name, $found_proto);
-  set_in_declare($in_declare);
   $offset += toke_skipspace($offset);
   my $linestr = get_linestr();
   if (substr($linestr, $offset, 1) eq '{') {
@@ -267,8 +270,19 @@ sub linestr_callback_const {
 
 sub linestr_callback {
   my $type = shift;
-  my $meth = "linestr_callback_${type}";
-  __PACKAGE__->can($meth)->(@_);
+  my $name = $_[0];
+  my $pack = get_curstash_name();
+  my $handlers = $declarator_handlers{$pack}{$name};
+  if (ref $handlers eq 'CODE') {
+    my $meth = "linestr_callback_${type}";
+    __PACKAGE__->can($meth)->(@_);
+  } elsif (ref $handlers eq 'HASH') {
+    if ($handlers->{$type}) {
+      $handlers->{$type}->(@_);
+    }
+  } else {
+    die "PANIC: unknown thing in handlers for $pack $name: $handlers";
+  }
 }
 
 =head1 NAME
