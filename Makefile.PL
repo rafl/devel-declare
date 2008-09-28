@@ -9,6 +9,10 @@ requires 'Scalar::Util';
 build_requires 'Test::More';
 build_requires 'Scope::Guard';
 
+postamble(<<'EOM');
+$(OBJECT) : stolen_chunk_of_toke.c
+EOM
+
 WriteMakefile(
   dist => {
     PREOP => 'pod2text lib/Devel/Declare.pm >$(DISTVNAME)/README'
