@@ -304,7 +304,7 @@ STATIC OP *dd_ck_const(pTHX_ OP *o) {
   /* if this is set, we just grabbed a delimited string or something,
      not a bareword, so NO TOUCHY */
 
-  if (PL_lex_stuff)
+  if (DD_HAVE_LEX_STUFF)
     return o;
 
   /* don't try and look this up if it's not a string const */
