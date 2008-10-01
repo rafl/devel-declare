@@ -138,7 +138,7 @@ char* dd_get_lex_stuff(pTHX) {
 
 char* dd_clear_lex_stuff(pTHX) {
   if (DD_HAVE_PARSER)
-    PL_lex_stuff = Nullsv;
+    PL_lex_stuff = (SV*)NULL;
 }
 
 char* dd_get_curstash_name(pTHX) {
