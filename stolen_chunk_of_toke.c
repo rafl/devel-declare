@@ -136,11 +136,6 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #  define PL_nextval            (PL_parser->nextval)
 /* end of backcompat macros form 5.9 toke.c (mst) */
 #endif
-/* we also need this because we define PERL_CORE so handy.h doesn't provide
-   it for us (mst) */
-#ifndef NEWSV
-#define NEWSV(x,len)    newSV(len)
-#endif
 
 /* when ccflags include -DDEBUGGING we need this for earlier 5.8 perls */
 #ifndef SvPV_nolen_const
