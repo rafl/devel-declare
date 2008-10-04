@@ -485,12 +485,14 @@ Devel::Declare -
 
 Currently valid op types: 'check', 'rv2cv'
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 Matt S Trout - <mst@shadowcat.co.uk>
 
 Company: http://www.shadowcat.co.uk/
 Blog: http://chainsawblues.vox.com/
+
+Florian Ragwitz E<lt>rafl@debian.orgE<gt>
 
 =head1 LICENSE
 
