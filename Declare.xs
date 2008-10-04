@@ -123,7 +123,7 @@ void dd_set_linestr(pTHX_ char* new_value) {
   SvGROW(PL_linestr, strlen(new_value));
 
   if (SvPVX(PL_linestr) != old_linestr)
-    Perl_croak(aTHX_ "forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
+    croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
 
   memcpy(SvPVX(PL_linestr), new_value, new_len+1);
 
