@@ -1,6 +1,5 @@
 Changes for Devel-Declare
 
-  - eliminate PERL_5_9_PLUS macro in favour of ifdef PL_parser
   - clean up checks for whether we're lexing and whether lex_stuff exists
     to handle the PL_parser factor-out in 5.10
 

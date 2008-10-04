@@ -83,7 +83,11 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #define PERL_5_8_8_PLUS
 #endif
 
-#ifdef PL_parser
+#if PERL_REVISION == 5 && PERL_VERSION > 8
+#define PERL_5_9_PLUS
+#endif
+
+#ifdef PERL_5_9_PLUS
 /* 5.9+ moves a bunch of things to a PL_parser struct so we need to
    declare the backcompat macros for things to still work (mst) */
 
