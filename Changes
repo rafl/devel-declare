@@ -1,5 +1,6 @@
 Changes for Devel-Declare
 
+0.002001
   - clean up checks for whether we're lexing and whether lex_stuff exists
     to handle the PL_parser factor-out in 5.10
   - check if reallocation of PL_linestr is necessary before doing it. this way
