@@ -120,7 +120,7 @@ void dd_set_linestr(pTHX_ char* new_value) {
   int new_len = strlen(new_value);
   char* old_linestr = SvPVX(PL_linestr);
 
-  SvGROW(PL_linestr, strlen(new_value));
+  SvGROW(PL_linestr, new_len);
 
   if (SvPVX(PL_linestr) != old_linestr)
     croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
