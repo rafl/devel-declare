@@ -306,16 +306,20 @@ S_skipspace(pTHX_ register char *s)
 	    PL_bufend = SvPVX(PL_linestr) + SvCUR(PL_linestr);
 	    PL_last_lop = PL_last_uni = Nullch;
 
-	    /* Close the filehandle.  Could be from -P preprocessor,
+	    /* In perl versions previous to p4-rawid: //depot/perl@32954 -P
+	     * preprocessors were supported here. We don't support -P at all, even
+	     * on perls that support it, and use the following chunk from blead
+	     * perl. (rafl)
+	     */
+
+	    /* Close the filehandle.  Could be from
 	     * STDIN, or a regular file.  If we were reading code from
 	     * STDIN (because the commandline held no -e or filename)
 	     * then we don't close it, we reset it so the code can
 	     * read from STDIN too.
 	     */
 
-	    if (PL_preprocess && !PL_in_eval)
-		(void)PerlProc_pclose(PL_rsfp);
-	    else if ((PerlIO*)PL_rsfp == PerlIO_stdin())
+	    if ((PerlIO*)PL_rsfp == PerlIO_stdin())
 		PerlIO_clearerr(PL_rsfp);
 	    else
 		(void)PerlIO_close(PL_rsfp);
