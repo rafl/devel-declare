@@ -10,9 +10,7 @@
 # define Newx(v,n,t) New(0,v,n,t)
 #endif /* !Newx */
 
-#if 0
-#define DD_DEBUG
-#endif
+static int dd_debug = 0;
 
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
@@ -196,21 +194,21 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
 
   if (in_declare) {
     cb_args[0] = NULL;
-#ifdef DD_DEBUG
-    printf("Deconstructing declare\n");
-    printf("PL_bufptr: %s\n", PL_bufptr);
-    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-    printf("linestr: %s\n", SvPVX(PL_linestr));
-    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-#endif
+    if (dd_debug) {
+      printf("Deconstructing declare\n");
+      printf("PL_bufptr: %s\n", PL_bufptr);
+      printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+      printf("linestr: %s\n", SvPVX(PL_linestr));
+      printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+    }
     call_argv("Devel::Declare::done_declare", G_VOID|G_DISCARD, cb_args);
-#ifdef DD_DEBUG
-    printf("PL_bufptr: %s\n", PL_bufptr);
-    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-    printf("linestr: %s\n", SvPVX(PL_linestr));
-    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-    printf("actual len: %i\n", strlen(PL_bufptr));
-#endif
+    if (dd_debug) {
+      printf("PL_bufptr: %s\n", PL_bufptr);
+      printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+      printf("linestr: %s\n", SvPVX(PL_linestr));
+      printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+      printf("actual len: %i\n", strlen(PL_bufptr));
+    }
     return o;
   }
 
@@ -222,22 +220,19 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   if (!DD_AM_LEXING)
     return o; /* not lexing? */
 
-#ifdef DD_DEBUG
-  printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
-#endif
+  if (dd_debug) {
+    printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
+  }
 
   dd_flags = dd_is_declarator(aTHX_ GvNAME(kGVOP_gv));
 
   if (dd_flags == -1)
     return o;
 
-#ifdef DD_DEBUG
-  printf("dd_flags are: %i\n", dd_flags);
-#endif
-
-#ifdef DD_DEBUG
-  printf("PL_tokenbuf: %s\n", PL_tokenbuf);
-#endif
+  if (dd_debug) {
+    printf("dd_flags are: %i\n", dd_flags);
+    printf("PL_tokenbuf: %s\n", PL_tokenbuf);
+  }
 
   dd_linestr_callback(aTHX_ "rv2cv", GvNAME(kGVOP_gv));
 
@@ -252,9 +247,9 @@ OP* dd_pp_entereval(pTHX) {
   STRLEN len;
   const char* s;
   if (SvPOK(sv)) {
-#ifdef DD_DEBUG
-    printf("mangling eval sv\n");
-#endif
+    if (dd_debug) {
+      printf("mangling eval sv\n");
+    }
     if (SvREADONLY(sv))
       sv = sv_2mortal(newSVsv(sv));
     s = SvPVX(sv);
@@ -412,3 +407,8 @@ void
 set_in_declare(int value)
   CODE:
     in_declare = value;
+
+BOOT:
+  if (getenv ("DD_DEBUG")) {
+    dd_debug = 1;
+  }
