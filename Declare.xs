@@ -14,12 +14,6 @@
 #define DD_DEBUG
 #endif
 
-#ifdef DD_DEBUG
-#define DD_DEBUG_S printf("Buffer: %s\n", s);
-#else
-#define DD_DEBUG_S
-#endif
-
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
 
