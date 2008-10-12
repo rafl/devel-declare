@@ -103,6 +103,9 @@ void dd_linestr_callback (pTHX_ char* type, char* name) {
 }
 
 char* dd_get_linestr(pTHX) {
+  if (!DD_HAVE_PARSER) {
+    return NULL;
+  }
   return SvPVX(PL_linestr);
 }
 
