@@ -126,7 +126,7 @@ char* dd_get_lex_stuff(pTHX) {
   return (DD_HAVE_LEX_STUFF ? SvPVX(PL_lex_stuff) : "");
 }
 
-char* dd_clear_lex_stuff(pTHX) {
+void dd_clear_lex_stuff(pTHX) {
   if (DD_HAVE_PARSER)
     PL_lex_stuff = (SV*)NULL;
 }
