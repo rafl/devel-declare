@@ -139,7 +139,11 @@ char* dd_get_curstash_name(pTHX) {
 }
 
 int dd_get_linestr_offset(pTHX) {
-  char* linestr = SvPVX(PL_linestr);
+  char* linestr;
+  if (!DD_HAVE_PARSER) {
+    return -1;
+  }
+  linestr = SvPVX(PL_linestr);
   return PL_bufptr - linestr;
 }
 
