@@ -194,12 +194,10 @@ STATIC OP *(*dd_old_ck_rv2cv)(pTHX_ OP *op);
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
   OP* kid;
   int dd_flags;
-  char* cb_args[6];
 
   o = dd_old_ck_rv2cv(aTHX_ o); /* let the original do its job */
 
   if (in_declare) {
-    cb_args[0] = NULL;
     if (dd_debug) {
       printf("Deconstructing declare\n");
       printf("PL_bufptr: %s\n", PL_bufptr);
@@ -207,7 +205,19 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o) {
       printf("linestr: %s\n", SvPVX(PL_linestr));
       printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
     }
-    call_argv("Devel::Declare::done_declare", G_VOID|G_DISCARD, cb_args);
+
+    dSP;
+  
+    ENTER;
+    SAVETMPS;
+  
+    PUSHMARK(SP);
+  
+    call_pv("Devel::Declare::done_declare", G_VOID|G_DISCARD);
+
+    FREETMPS;
+    LEAVE;
+
     if (dd_debug) {
       printf("PL_bufptr: %s\n", PL_bufptr);
       printf("bufend at: %i\n", PL_bufend - PL_bufptr);

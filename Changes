@@ -1,5 +1,7 @@
 Changes for Devel-Declare
 
+  - switch done_declare call from call_argv to call_pv
+
 0.002001
   - clean up checks for whether we're lexing and whether lex_stuff exists
     to handle the PL_parser factor-out in 5.10
