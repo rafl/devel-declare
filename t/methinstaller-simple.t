@@ -34,7 +34,7 @@ my ($test_method1, $test_method2, @test_list);
   MethodHandlers->install_methodhandler(
     name => 'method',
     into => __PACKAGE__,
-    );
+  );
   }
 
   method new {
