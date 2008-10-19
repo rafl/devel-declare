@@ -122,9 +122,7 @@ my ($test_method1, $test_method2, @test_list);
     return bless({ @_ }, $class);
   };
 
-  method foo (
-      $foo
-  ) {
+  method foo ($foo) {
     return (ref $self).': Foo: '.$foo;
   };
 
