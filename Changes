@@ -1,6 +1,10 @@
 Changes for Devel-Declare
 
-  - switch done_declare call from call_argv to call_pv
+  - switch done_declare call from call_argv to call_pv.
+  - Make get_linestr{,_offset} return sensible values when called while the
+    parser isn't running.
+  - Remove several compile time warnings.
+  - Allow enabling of debug mode using $ENV{DD_DEBUG}.
 
 0.002001
   - clean up checks for whether we're lexing and whether lex_stuff exists
