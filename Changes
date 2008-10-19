@@ -1,5 +1,6 @@
 Changes for Devel-Declare
 
+0.002002
   - switch done_declare call from call_argv to call_pv.
   - Make get_linestr{,_offset} return sensible values when called while the
     parser isn't running.
