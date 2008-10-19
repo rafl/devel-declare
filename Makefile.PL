@@ -7,7 +7,7 @@ all_from 'lib/Devel/Declare.pm';
 
 requires 'Scalar::Util';
 build_requires 'Test::More';
-build_requires 'Scope::Guard';
+build_requires 'B::Hooks::EndOfScope';
 
 postamble(<<'EOM');
 $(OBJECT) : stolen_chunk_of_toke.c
