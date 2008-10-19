@@ -91,16 +91,6 @@ use Devel::Declare ();
       shadow(sub (&) { shift });
     }
   }
-
-  sub inject_scope {
-    $^H |= 0x120000;
-    $^H{DD_METHODHANDLERS} = Scope::Guard->new(sub {
-      my $linestr = Devel::Declare::get_linestr;
-      my $offset = Devel::Declare::get_linestr_offset;
-      substr($linestr, $offset, 0) = ';';
-      Devel::Declare::set_linestr($linestr);
-    });
-  }
 }
 
 my ($test_method1, $test_method2, @test_list);
