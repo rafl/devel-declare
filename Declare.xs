@@ -51,6 +51,9 @@ int dd_is_declarator(pTHX_ char* name) {
 
   /* $declarators{$current_package_name} */
 
+  if (!HvNAME(PL_curstash))
+	  return -1;
+
   is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
                              strlen(HvNAME(PL_curstash)), FALSE);
 
