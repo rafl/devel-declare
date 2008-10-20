@@ -25,7 +25,7 @@ static int in_declare = 0;
 
 #define DD_AM_LEXING_CHECK (PL_lex_state == LEX_NORMAL || PL_lex_state == LEX_INTERPNORMAL)
 
-#ifdef PL_parser
+#if defined(PL_parser) || defined(PERL_5_9_PLUS)
 #define DD_HAVE_PARSER PL_parser
 #define DD_HAVE_LEX_STUFF (PL_parser && PL_lex_stuff)
 #define DD_AM_LEXING (PL_parser && DD_AM_LEXING_CHECK)
