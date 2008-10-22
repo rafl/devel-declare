@@ -1,10 +1,11 @@
 package Devel::Declare::Context::Simple;
 
 use Devel::Declare ();
-use Scope::Guard;
+use B::Hooks::EndOfScope;
 use strict;
 use warnings;
 
+sub DEBUG { warn "@_" }
 sub new {
   my $class = shift;
   bless {@_}, $class;
@@ -39,6 +40,8 @@ sub strip_name {
     Devel::Declare::set_linestr($linestr);
     return $name;
   }
+
+  $self->skipspace;
   return;
 }
 
@@ -47,15 +50,16 @@ sub strip_proto {
   $self->skipspace;
 
   my $linestr = Devel::Declare::get_linestr();
-  if (substr( $linestr, $self->offset, 1 ) eq '(') {
-    my $length = Devel::Declare::toke_scan_str( $self->offset );
+  if (substr($linestr, $self->offset, 1) eq '(') {
+    my $length = Devel::Declare::toke_scan_str($self->offset);
     my $proto  = Devel::Declare::get_lex_stuff();
     Devel::Declare::clear_lex_stuff();
     $linestr = Devel::Declare::get_linestr();
-    substr( $linestr, $self->offset, $length ) = '';
+    substr($linestr, $self->offset, $length) = '';
     Devel::Declare::set_linestr($linestr);
     return $proto;
   }
+
   return;
 }
 
@@ -70,30 +74,37 @@ sub shadow {
 }
 
 sub inject_if_block {
-  my $self    = shift;
+  my $self   = shift;
   my $inject = shift;
+  my $before = shift || '';
+
   $self->skipspace;
+
   my $linestr = Devel::Declare::get_linestr;
-  if (substr( $linestr, $self->offset, 1 ) eq '{') {
-    substr( $linestr, $self->offset + 1, 0 ) = $inject;
+  if (substr($linestr, $self->offset, 1) eq '{') {
+    substr($linestr, $self->offset + 1, 0) = $inject;
+    substr($linestr, $self->offset, 0) = $before;
     Devel::Declare::set_linestr($linestr);
   }
 }
 
 sub scope_injector_call {
-  return ' BEGIN { ' . __PACKAGE__ . '::inject_scope }; ';
+  my $self = shift;
+  my $inject = shift || '';
+  return ' BEGIN { ' . ref($self) . "->inject_scope('${inject}') }; ";
 }
 
 sub inject_scope {
-  my $self = shift;
-  $^H |= 0x120000;
-  $^H{DD_METHODHANDLERS} = Scope::Guard->new(sub {
+  my $class = shift;
+  my $inject = shift;
+  on_scope_end {
       my $linestr = Devel::Declare::get_linestr;
+      return unless defined $linestr;
       my $offset  = Devel::Declare::get_linestr_offset;
-      substr( $linestr, $offset, 0 ) = ';';
+      substr( $linestr, $offset, 0 ) = ';' . $inject;
       Devel::Declare::set_linestr($linestr);
-  });
+  };
 }
 
 1;
-
+# vi:sw=2 ts=2

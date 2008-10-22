@@ -66,6 +66,7 @@ my ($test_method1, $test_method2, @test_list);
 
   @test_list = (method { 1 }, sub { 2 }, method () { 3 }, sub { 4 });
 
+  method leftie :lvalue { $self->{attributes} };
 }
 
 use Test::More 'no_plan';
@@ -80,6 +81,9 @@ is($o->foo('yay'), 'DeclareTest: Foo: yay', 'method with argument ok');
 
 is($o->main, 'main', 'declaration of package named method ok');
 
+$o->leftie = 'attributes work';
+is($o->leftie, 'attributes work', 'code attributes intact');
+
 $o->upgrade;
 
 isa_ok($o, 'DeclareTest2');
@@ -92,19 +96,3 @@ is($o->$test_method2('this'), 'DeclareTest2, this', 'anon method with proto ok')
 
 is_deeply([ map { $_->() } @test_list ], [ 1, 2, 3, 4], 'binding ok');
 
-__END__
-/home/rhesa/perl/t/methinstaller-simple....
-ok 1 - The object isa DeclareTest
-ok 2 - @_ args ok
-ok 3 - method with argument ok
-ok 4 - declaration of package named method ok
-ok 5 - The object isa DeclareTest2
-ok 6 - absolute method declaration ok
-ok 7 - anon method with @_ ok
-ok 8 - anon method with proto ok
-ok 9 - binding ok
-1..9
-ok
-All tests successful.
-Files=1, Tests=9,  0 wallclock secs ( 0.04 usr  0.00 sys +  0.05 cusr  0.00 csys =  0.09 CPU)
-Result: PASS

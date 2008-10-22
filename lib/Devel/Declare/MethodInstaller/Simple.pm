@@ -22,6 +22,53 @@ sub install_methodhandler {
   );
 }
 
+sub strip_attrs {
+  my $self = shift;
+  $self->skipspace;
+
+  my $Offset  = $self->offset;
+  my $linestr = Devel::Declare::get_linestr;
+  my $attrs   = '';
+
+  if (substr($linestr, $Offset, 1) eq ':') {
+    while (substr($linestr, $Offset, 1) ne '{') {
+      if (substr($linestr, $Offset, 1) eq ':') {
+        substr($linestr, $Offset, 1) = '';
+        Devel::Declare::set_linestr($linestr);
+
+        $attrs .= ':';
+      }
+
+      $self->skipspace;
+      $Offset  = $self->offset;
+      $linestr = Devel::Declare::get_linestr();
+
+      if (my $len = Devel::Declare::toke_scan_word($Offset, 0)) {
+        my $name = substr($linestr, $Offset, $len);
+        substr($linestr, $Offset, $len) = '';
+        Devel::Declare::set_linestr($linestr);
+
+        $attrs .= " ${name}";
+
+        if (substr($linestr, $Offset, 1) eq '(') {
+          my $length = Devel::Declare::toke_scan_str($Offset);
+          my $arg    = Devel::Declare::get_lex_stuff();
+          Devel::Declare::clear_lex_stuff();
+          $linestr = Devel::Declare::get_linestr();
+          substr($linestr, $Offset, $length) = '';
+          Devel::Declare::set_linestr($linestr);
+
+          $attrs .= "(${arg})";
+        }
+      }
+    }
+
+    $linestr = Devel::Declare::get_linestr();
+  }
+
+  return $attrs;
+}
+
 sub parser {
   my $self = shift;
   $self->init(@_);
@@ -29,12 +76,13 @@ sub parser {
   $self->skip_declarator;
   my $name   = $self->strip_name;
   my $proto  = $self->strip_proto;
+  my $attrs  = $self->strip_attrs;
   my @decl   = $self->parse_proto($proto);
   my $inject = $self->inject_parsed_proto(@decl);
   if (defined $name) {
     $inject = $self->scope_injector_call() . $inject;
   }
-  $self->inject_if_block($inject);
+  $self->inject_if_block($inject, $attrs ? "sub ${attrs} " : '');
   if (defined $name) {
     my $pkg = $self->get_curstash_name;
     $name = join( '::', $pkg, $name )
