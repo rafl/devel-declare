@@ -106,29 +106,6 @@ void dd_linestr_callback (pTHX_ char* type, char* name) {
   LEAVE;
 }
 
-char* dd_get_linestr(pTHX) {
-  if (!DD_HAVE_PARSER) {
-    return NULL;
-  }
-  return SvPVX(PL_linestr);
-}
-
-void dd_set_linestr(pTHX_ char* new_value) {
-  int new_len = strlen(new_value);
-
-  if (SvLEN(PL_linestr) < new_len) {
-    croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
-  }
-
-  SvGROW(PL_linestr, new_len);
-
-  memcpy(SvPVX(PL_linestr), new_value, new_len+1);
-
-  SvCUR_set(PL_linestr, new_len);
-
-  PL_bufend = SvPVX(PL_linestr) + new_len;
-}
-
 char* dd_get_lex_stuff(pTHX) {
   return (DD_HAVE_LEX_STUFF ? SvPVX(PL_lex_stuff) : "");
 }
@@ -140,15 +117,6 @@ void dd_clear_lex_stuff(pTHX) {
 
 char* dd_get_curstash_name(pTHX) {
   return HvNAME(PL_curstash);
-}
-
-int dd_get_linestr_offset(pTHX) {
-  char* linestr;
-  if (!DD_HAVE_PARSER) {
-    return -1;
-  }
-  linestr = SvPVX(PL_linestr);
-  return PL_bufptr - linestr;
 }
 
 char* dd_move_past_token (pTHX_ char* s) {
@@ -336,18 +304,6 @@ setup()
   filter_add(dd_filter_realloc, NULL);
 
 char*
-get_linestr()
-  CODE:
-    RETVAL = dd_get_linestr(aTHX);
-  OUTPUT:
-    RETVAL
-
-void
-set_linestr(char* new_value)
-  CODE:
-    dd_set_linestr(aTHX_ new_value);
-
-char*
 get_lex_stuff()
   CODE:
     RETVAL = dd_get_lex_stuff(aTHX);
@@ -363,13 +319,6 @@ char*
 get_curstash_name()
   CODE:
     RETVAL = dd_get_curstash_name(aTHX);
-  OUTPUT:
-    RETVAL
-
-int
-get_linestr_offset()
-  CODE:
-    RETVAL = dd_get_linestr_offset(aTHX);
   OUTPUT:
     RETVAL
 

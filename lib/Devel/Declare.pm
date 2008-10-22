@@ -15,10 +15,19 @@ use vars qw(%declarators %declarator_handlers @ISA);
 use base qw(DynaLoader);
 use Scalar::Util 'set_prototype';
 use B::Hooks::OP::Check;
+use B::Hooks::Parser;
 
 bootstrap Devel::Declare;
 
 @ISA = ();
+
+# temporary backcompat
+{
+    for (qw/get_linestr get_linestr_offset set_linestr/) {
+        no strict 'refs';
+        *{ $_ } = B::Hooks::Parser->can($_);
+    }
+}
 
 sub import {
   my ($class, %args) = @_;
