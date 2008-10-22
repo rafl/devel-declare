@@ -1,12 +1,12 @@
 use Devel::Declare ();
 use Test::More qw(no_plan);
-use Scope::Guard;
 
 {
   package FoomHandlers;
 
   use strict;
   use warnings;
+  use B::Hooks::EndOfScope;
 
   our ($Declarator, $Offset);
 
@@ -80,13 +80,12 @@ use Scope::Guard;
   }
 
   sub inject_scope {
-    $^H |= 0x120000;
-    $^H{DD_FOOMHANDLERS} = Scope::Guard->new(sub {
+    on_scope_end {
       my $linestr = Devel::Declare::get_linestr;
       my $offset = Devel::Declare::get_linestr_offset;
       substr($linestr, $offset, 0) = ';';
       Devel::Declare::set_linestr($linestr);
-    });
+    };
   }
 
   package Foo;
