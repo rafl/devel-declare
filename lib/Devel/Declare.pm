@@ -14,6 +14,7 @@ use constant DECLARE_PACKAGE => 8+1; # name implicit
 use vars qw(%declarators %declarator_handlers @ISA);
 use base qw(DynaLoader);
 use Scalar::Util 'set_prototype';
+use B::Hooks::OP::Check;
 
 bootstrap Devel::Declare;
 
