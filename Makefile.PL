@@ -8,11 +8,12 @@ name 'Devel-Declare';
 all_from 'lib/Devel/Declare.pm';
 
 requires 'Scalar::Util';
-requires 'B::Hooks::OP::Check';
+requires 'B::Hooks::OP::Check' => '0.10';
 build_requires 'Test::More';
 build_requires 'Scope::Guard';
+build_requires 'B::Hooks::OP::Check' => '0.10';
 configure_requires 'ExtUtils::Depends';
-configure_requires 'B::Hooks::OP::Check';
+configure_requires 'B::Hooks::OP::Check' => '0.10';
 
 postamble(<<'EOM');
 $(OBJECT) : stolen_chunk_of_toke.c
