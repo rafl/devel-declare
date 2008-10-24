@@ -1,5 +1,6 @@
 Changes for Devel-Declare
 
+0.002999_01
   - Use B::Hooks::OP::Check to register PL_check callbacks.
   - Use B::Hooks::EndOfScope instead of %^H and Scope::Guard.
   - Don't segfault if HvNAME(PL_curstash) == NULL.
