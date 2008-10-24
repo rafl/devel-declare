@@ -15,6 +15,7 @@ use Devel::Declare ();
     my ($proto) = @_;
     my $inject = 'my ($self';
     if (defined $proto) {
+      $proto =~ s/[\r\n\s]+/ /g;
       $inject .= ", $proto" if length($proto);
       $inject .= ') = @_; ';
     } else {
@@ -88,6 +89,23 @@ my ($test_method1, $test_method2, @test_list);
 
   @test_list = (method { 1 }, sub { 2 }, method () { 3 }, sub { 4 });
 
+  method multiline1(
+  $foo
+  )
+  {
+    return "$foo$foo";
+  }
+
+  method multiline2(
+    $foo, $bar
+  ) { return "$foo $bar"; }
+
+  method 
+    multiline3 ($foo,
+        $bar) {
+    return "$bar $foo";
+  }
+
 }
 
 use Test::More 'no_plan';
@@ -102,6 +120,10 @@ is($o->foo('yay'), 'DeclareTest: Foo: yay', 'method with argument ok');
 
 is($o->main, 'main', 'declaration of package named method ok');
 
+is($o->multiline1(3), '33', 'multiline1 proto ok');
+is($o->multiline2(1,2), '1 2', 'multiline2 proto ok');
+is($o->multiline3(4,5), '5 4', 'multiline3 proto ok');
+
 $o->upgrade;
 
 isa_ok($o, 'DeclareTest2');
@@ -114,19 +136,3 @@ is($o->$test_method2('this'), 'DeclareTest2, this', 'anon method with proto ok')
 
 is_deeply([ map { $_->() } @test_list ], [ 1, 2, 3, 4], 'binding ok');
 
-__END__
-/home/rhesa/perl/t/method-no-semi....
-ok 1 - The object isa DeclareTest
-ok 2 - @_ args ok
-ok 3 - method with argument ok
-ok 4 - declaration of package named method ok
-ok 5 - The object isa DeclareTest2
-ok 6 - absolute method declaration ok
-ok 7 - anon method with @_ ok
-ok 8 - anon method with proto ok
-ok 9 - binding ok
-1..9
-ok
-All tests successful.
-Files=1, Tests=9,  0 wallclock secs ( 0.04 usr  0.00 sys +  0.05 cusr  0.00 csys =  0.09 CPU)
-Result: PASS

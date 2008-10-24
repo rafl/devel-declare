@@ -5,7 +5,6 @@ use B::Hooks::EndOfScope;
 use strict;
 use warnings;
 
-sub DEBUG { warn "@_" }
 sub new {
   my $class = shift;
   bless {@_}, $class;
@@ -30,14 +29,26 @@ sub skipspace {
   $self->offset += Devel::Declare::toke_skipspace( $self->offset );
 }
 
+sub get_linestr {
+  my $self = shift;
+  my $line = Devel::Declare::get_linestr();
+  return $line;
+}
+
+sub set_linestr {
+  my $self = shift;
+  my ($line) = @_;
+  Devel::Declare::set_linestr($line);
+}
+
 sub strip_name {
   my $self = shift;
   $self->skipspace;
   if (my $len = Devel::Declare::toke_scan_word( $self->offset, 1 )) {
-    my $linestr = Devel::Declare::get_linestr();
+    my $linestr = $self->get_linestr();
     my $name = substr( $linestr, $self->offset, $len );
     substr( $linestr, $self->offset, $len ) = '';
-    Devel::Declare::set_linestr($linestr);
+    $self->set_linestr($linestr);
     return $name;
   }
 
@@ -49,17 +60,25 @@ sub strip_proto {
   my $self = shift;
   $self->skipspace;
 
-  my $linestr = Devel::Declare::get_linestr();
+  my $linestr = $self->get_linestr();
   if (substr($linestr, $self->offset, 1) eq '(') {
     my $length = Devel::Declare::toke_scan_str($self->offset);
-    my $proto  = Devel::Declare::get_lex_stuff();
+    my $proto = Devel::Declare::get_lex_stuff();
     Devel::Declare::clear_lex_stuff();
-    $linestr = Devel::Declare::get_linestr();
+    if( $length < 0 ) {
+      # Need to scan ahead more
+      $linestr .= $self->get_linestr();
+      $length = rindex($linestr, ")") - $self->offset + 1;
+    }
+    else {
+      $linestr = $self->get_linestr();
+    }
+
     substr($linestr, $self->offset, $length) = '';
-    Devel::Declare::set_linestr($linestr);
+    $self->set_linestr($linestr);
+
     return $proto;
   }
-
   return;
 }
 
@@ -80,11 +99,11 @@ sub inject_if_block {
 
   $self->skipspace;
 
-  my $linestr = Devel::Declare::get_linestr;
+  my $linestr = $self->get_linestr;
   if (substr($linestr, $self->offset, 1) eq '{') {
     substr($linestr, $self->offset + 1, 0) = $inject;
     substr($linestr, $self->offset, 0) = $before;
-    Devel::Declare::set_linestr($linestr);
+    $self->set_linestr($linestr);
   }
 }
 
