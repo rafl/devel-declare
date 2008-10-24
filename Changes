@@ -1,5 +1,11 @@
 Changes for Devel-Declare
 
+0.003000
+
+  - Add Devel::Declare::Context::Simple and
+    Devel::Declare::MethodInstaller::Simple as an experimental way to make
+    creating block- and sub-like keywords easier (Rhesa Rozendaal).
+
 0.002999_01
   - Use B::Hooks::OP::Check to register PL_check callbacks.
   - Use B::Hooks::EndOfScope instead of %^H and Scope::Guard.
