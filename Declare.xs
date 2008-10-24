@@ -194,6 +194,7 @@ int dd_toke_skipspace(pTHX_ int offset) {
 /* replacement PL_check rv2cv entry */
 
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
+  dSP;
   OP* kid;
   int dd_flags;
 
@@ -206,13 +207,11 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
       printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
     }
 
-    dSP;
-  
     ENTER;
     SAVETMPS;
-  
+
     PUSHMARK(SP);
-  
+
     call_pv("Devel::Declare::done_declare", G_VOID|G_DISCARD);
 
     FREETMPS;
