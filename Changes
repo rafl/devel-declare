@@ -1,5 +1,13 @@
 Changes for Devel-Declare
 
+  - Use B::Hooks::OP::Check to register PL_check callbacks.
+  - Use B::Hooks::EndOfScope instead of %^H and Scope::Guard.
+  - Don't segfault if HvNAME(PL_curstash) == NULL.
+  - Don't segfault on 5.9.5+, where PL_parser is a symbol, not a define.
+  - Don't delete the previous symbol table entry when shadowing subs. This
+    makes us work within the debugger.
+  - Don't mix declarations and code.
+
 0.002002
   - switch done_declare call from call_argv to call_pv.
   - Make get_linestr{,_offset} return sensible values when called while the
