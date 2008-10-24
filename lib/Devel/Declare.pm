@@ -285,7 +285,7 @@ sub linestr_callback {
 
 =head1 NAME
 
-Devel::Declare - 
+Devel::Declare - Adding keywords to perl, in perl
 
 =head1 SYNOPSIS
 
