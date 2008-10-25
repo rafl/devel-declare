@@ -1,7 +1,10 @@
 Changes for Devel-Declare
 
-0.003000
+0.003001
+  - Don't use :lvalue in Context::Simple and MethodInstaller::Simple to keep
+    the debugger happy.
 
+0.003000
   - Add Devel::Declare::Context::Simple and
     Devel::Declare::MethodInstaller::Simple as an experimental way to make
     creating block- and sub-like keywords easier (Rhesa Rozendaal).
