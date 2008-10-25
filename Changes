@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.003002
+  - Depend on Sub::Name and B::Hooks::EndOfScope. MethodInstaller::Simple and
+    Context::Simple use them.
+
 0.003001
   - Don't use :lvalue in Context::Simple and MethodInstaller::Simple to keep
     the debugger happy.
