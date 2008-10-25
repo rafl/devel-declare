@@ -13,20 +13,32 @@ sub new {
 sub init {
   my $self = shift;
   @{$self}{ qw(Declarator Offset) } = @_;
-  $self;
+  return $self;
 }
 
-sub offset : lvalue { shift->{Offset}; }
-sub declarator { shift->{Declarator} }
+sub offset {
+  my $self = shift;
+  return $self->{Offset}
+}
+
+sub inc_offset {
+  my $self = shift;
+  $self->{Offset} += shift;
+}
+
+sub declarator {
+  my $self = shift;
+  return $self->{Declarator}
+}
 
 sub skip_declarator {
   my $self = shift;
-  $self->offset += Devel::Declare::toke_move_past_token( $self->offset );
+  $self->inc_offset(Devel::Declare::toke_move_past_token($self->offset));
 }
 
 sub skipspace {
   my $self = shift;
-  $self->offset += Devel::Declare::toke_skipspace( $self->offset );
+  $self->inc_offset(Devel::Declare::toke_skipspace($self->offset));
 }
 
 sub get_linestr {
@@ -87,7 +99,7 @@ sub get_curstash_name {
 }
 
 sub shadow {
-  my $self  = shift;
+  my $self = shift;
   my $pack = $self->get_curstash_name;
   Devel::Declare::shadow_sub( $pack . '::' . $self->declarator, $_[0] );
 }

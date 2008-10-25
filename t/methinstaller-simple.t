@@ -66,7 +66,7 @@ my ($test_method1, $test_method2, @test_list);
 
   @test_list = (method { 1 }, sub { 2 }, method () { 3 }, sub { 4 });
 
-  method leftie :lvalue { $self->{attributes} };
+  method leftie($left) : method { $self->{left} ||= $left; $self->{left} };
 }
 
 use Test::More 'no_plan';
@@ -81,7 +81,7 @@ is($o->foo('yay'), 'DeclareTest: Foo: yay', 'method with argument ok');
 
 is($o->main, 'main', 'declaration of package named method ok');
 
-$o->leftie = 'attributes work';
+$o->leftie( 'attributes work' );
 is($o->leftie, 'attributes work', 'code attributes intact');
 
 $o->upgrade;

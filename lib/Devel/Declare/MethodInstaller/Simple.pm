@@ -26,36 +26,34 @@ sub strip_attrs {
   my $self = shift;
   $self->skipspace;
 
-  my $Offset  = $self->offset;
   my $linestr = Devel::Declare::get_linestr;
   my $attrs   = '';
 
-  if (substr($linestr, $Offset, 1) eq ':') {
-    while (substr($linestr, $Offset, 1) ne '{') {
-      if (substr($linestr, $Offset, 1) eq ':') {
-        substr($linestr, $Offset, 1) = '';
+  if (substr($linestr, $self->offset, 1) eq ':') {
+    while (substr($linestr, $self->offset, 1) ne '{') {
+      if (substr($linestr, $self->offset, 1) eq ':') {
+        substr($linestr, $self->offset, 1) = '';
         Devel::Declare::set_linestr($linestr);
 
         $attrs .= ':';
       }
 
       $self->skipspace;
-      $Offset  = $self->offset;
       $linestr = Devel::Declare::get_linestr();
 
-      if (my $len = Devel::Declare::toke_scan_word($Offset, 0)) {
-        my $name = substr($linestr, $Offset, $len);
-        substr($linestr, $Offset, $len) = '';
+      if (my $len = Devel::Declare::toke_scan_word($self->offset, 0)) {
+        my $name = substr($linestr, $self->offset, $len);
+        substr($linestr, $self->offset, $len) = '';
         Devel::Declare::set_linestr($linestr);
 
         $attrs .= " ${name}";
 
-        if (substr($linestr, $Offset, 1) eq '(') {
-          my $length = Devel::Declare::toke_scan_str($Offset);
+        if (substr($linestr, $self->offset, 1) eq '(') {
+          my $length = Devel::Declare::toke_scan_str($self->offset);
           my $arg    = Devel::Declare::get_lex_stuff();
           Devel::Declare::clear_lex_stuff();
           $linestr = Devel::Declare::get_linestr();
-          substr($linestr, $Offset, $length) = '';
+          substr($linestr, $self->offset, $length) = '';
           Devel::Declare::set_linestr($linestr);
 
           $attrs .= "(${arg})";
