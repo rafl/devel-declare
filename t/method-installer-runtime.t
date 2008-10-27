@@ -1,12 +1,7 @@
-
 use strict;
-
+use warnings;
 use Test::More tests => 2;
-
 use Devel::Declare::MethodInstaller::Simple;
-
-# suppress warnings
-sub Devel::Declare::MethodInstaller::Simple::parse_proto { '' }
 
 BEGIN {
   Devel::Declare::MethodInstaller::Simple->install_methodhandler(
