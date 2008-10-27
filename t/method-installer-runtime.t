@@ -1,9 +1,8 @@
 
 use strict;
 
-use Test::More tests => 3;
+use Test::More tests => 2;
 
-use lib 'lib';
 use Devel::Declare::MethodInstaller::Simple;
 
 # suppress warnings
@@ -16,10 +15,9 @@ BEGIN {
   );
 }
 
-is eval { foo() } , undef;
-like $@, qr/subroutine &main::foo/;
+ok(!main->can('foo'), 'foo() not installed yet');
 
-method foo { 1 }
+method foo { }
 
-is foo(), 1;
+ok(main->can('foo'), 'foo() installed at runtime');
 
