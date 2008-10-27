@@ -114,7 +114,7 @@ sub parser {
   return;
 }
 
-sub parse_proto { }
+sub parse_proto { '' }
 
 sub inject_parsed_proto {
   return $_[1];
