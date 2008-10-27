@@ -1,3 +1,14 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Test::More 'no_plan';
+
+my $Have_Devel_BeginLift;
+BEGIN {
+  # setup_for_cv() introduced in 0.001001
+  $Have_Devel_BeginLift = eval q{ use Devel::BeginLift 0.001001; 1 };
+}
+
 
 {
   package MethodHandlers;
@@ -23,6 +34,17 @@
     return $inject;
   }
 
+  sub code_for {
+    my($self, $name) = @_;
+
+    my $code = $self->SUPER::code_for($name);
+
+    if( defined $name and $Have_Devel_BeginLift ) {
+      Devel::BeginLift->setup_for_cv($code);
+    }
+
+    return $code;
+  }
 }
 
 my ($test_method1, $test_method2, @test_list);
@@ -35,6 +57,13 @@ my ($test_method1, $test_method2, @test_list);
     name => 'method',
     into => __PACKAGE__,
   );
+  }
+
+  # Test at_BEGIN
+  SKIP: {
+      ::skip "Need Devel::BeginLift for compile time methods", 1
+        unless $Have_Devel_BeginLift;
+      ::can_ok( "DeclareTest", qw(new foo upgrade) );
   }
 
   method new {
@@ -69,7 +98,6 @@ my ($test_method1, $test_method2, @test_list);
   method leftie($left) : method { $self->{left} ||= $left; $self->{left} };
 }
 
-use Test::More 'no_plan';
 
 my $o = DeclareTest->new(attr => "value");
 

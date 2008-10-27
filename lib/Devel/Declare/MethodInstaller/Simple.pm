@@ -67,6 +67,31 @@ sub strip_attrs {
   return $attrs;
 }
 
+sub code_for {
+  my ($self, $name) = @_;
+
+  if (defined $name) {
+    my $pkg = $self->get_curstash_name;
+    $name = join( '::', $pkg, $name )
+      unless( $name =~ /::/ );
+    return sub (&) {
+      my $code = shift;
+      # So caller() gets the subroutine name
+      no strict 'refs';
+      *{$name} = subname $name => $code;
+      return;
+    };
+  } else {
+    return sub (&) { shift };
+  }
+}
+
+sub install {
+  my ($self, $name ) = @_;
+
+  $self->shadow( $self->code_for($name) );
+}
+
 sub parser {
   my $self = shift;
   $self->init(@_);
@@ -81,19 +106,10 @@ sub parser {
     $inject = $self->scope_injector_call() . $inject;
   }
   $self->inject_if_block($inject, $attrs ? "sub ${attrs} " : '');
-  if (defined $name) {
-    my $pkg = $self->get_curstash_name;
-    $name = join( '::', $pkg, $name )
-      unless( $name =~ /::/ );
-    $self->shadow( sub (&) {
-      my $code = shift;
-      # So caller() gets the subroutine name
-      no strict 'refs';
-      *{$name} = subname $name => $code;
-    });
-  } else {
-    $self->shadow(sub (&) { shift });
-  }
+
+  $self->install( $name );
+
+  return;
 }
 
 sub parse_proto { }
