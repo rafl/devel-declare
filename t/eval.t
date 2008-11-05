@@ -15,6 +15,8 @@ sub handle_method {
 
 use Devel::Declare 'method' => \&handle_method;
 
+BEGIN { $^H{foo} = 'bar' }
+
 eval "method bar { 42 }";
 diag $@ if $@;
 
