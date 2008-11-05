@@ -256,9 +256,16 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
 
 OP* dd_pp_entereval(pTHX) {
   dSP;
-  dPOPss;
   STRLEN len;
   const char* s;
+  SV *sv;
+#ifdef PERL_5_9_PLUS
+  SV *saved_hh;
+  if (PL_op->op_private & OPpEVAL_HAS_HH) {
+    saved_hh = POPs;
+  }
+#endif
+  sv = POPs;
   if (SvPOK(sv)) {
     if (dd_debug) {
       printf("mangling eval sv\n");
@@ -275,6 +282,11 @@ OP* dd_pp_entereval(pTHX) {
     SvGROW(sv, 8192);
   }
   PUSHs(sv);
+#ifdef PERL_5_9_PLUS
+  if (PL_op->op_private & OPpEVAL_HAS_HH) {
+    PUSHs(saved_hh);
+  }
+#endif
   return PL_ppaddr[OP_ENTEREVAL](aTHX);
 }
 
