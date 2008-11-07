@@ -24,6 +24,7 @@
 #define filter_gets(a,b,c)      S_filter_gets(aTHX_ a,b,c)
 #define scan_str(a,b,c)         S_scan_str(aTHX_ a,b,c)
 #define scan_word(a,b,c,d,e)    S_scan_word(aTHX_ a,b,c,d,e)
+#define scan_ident(a,b,c,d,e)   S_scan_ident(aTHX_ a,b,c,d,e)
 
 STATIC void     S_incline(pTHX_ char *s);
 STATIC char*    S_skipspace(pTHX_ char *s);
@@ -847,4 +848,163 @@ S_force_next(pTHX_ I32 type)
   PL_lex_expect = PL_expect;
   PL_lex_state = LEX_KNOWNEXT;
     }
+}
+
+#define XFAKEBRACK 128
+
+STATIC char *
+S_scan_ident(pTHX_ register char *s, register const char *send, char *dest, STRLEN destlen, I32 ck_uni)
+{
+    register char *d;
+    register char *e;
+    char *bracket = Nullch;
+    char funny = *s++;
+
+    if (isSPACE(*s))
+	s = skipspace(s);
+    d = dest;
+    e = d + destlen - 3;	/* two-character token, ending NUL */
+    if (isDIGIT(*s)) {
+	while (isDIGIT(*s)) {
+	    if (d >= e)
+		Perl_croak(aTHX_ ident_too_long);
+	    *d++ = *s++;
+	}
+    }
+    else {
+	for (;;) {
+	    if (d >= e)
+		Perl_croak(aTHX_ ident_too_long);
+	    if (isALNUM(*s))	/* UTF handled below */
+		*d++ = *s++;
+	    else if (*s == '\'' && isIDFIRST_lazy_if(s+1,UTF)) {
+		*d++ = ':';
+		*d++ = ':';
+		s++;
+	    }
+	    else if (*s == ':' && s[1] == ':') {
+		*d++ = *s++;
+		*d++ = *s++;
+	    }
+	    else if (UTF && UTF8_IS_START(*s) && isALNUM_utf8((U8*)s)) {
+		char *t = s + UTF8SKIP(s);
+		while (UTF8_IS_CONTINUED(*t) && is_utf8_mark((U8*)t))
+		    t += UTF8SKIP(t);
+		if (d + (t - s) > e)
+		    Perl_croak(aTHX_ ident_too_long);
+		Copy(s, d, t - s, char);
+		d += t - s;
+		s = t;
+	    }
+	    else
+		break;
+	}
+    }
+    *d = '\0';
+    d = dest;
+    if (*d) {
+	if (PL_lex_state != LEX_NORMAL)
+	    PL_lex_state = LEX_INTERPENDMAYBE;
+	return s;
+    }
+    if (*s == '$' && s[1] &&
+	(isALNUM_lazy_if(s+1,UTF) || s[1] == '$' || s[1] == '{' || strnEQ(s+1,"::",2)) )
+    {
+	return s;
+    }
+    if (*s == '{') {
+	bracket = s;
+	s++;
+    }
+    else if (ck_uni)
+	check_uni();
+    if (s < send)
+	*d = *s++;
+    d[1] = '\0';
+    if (*d == '^' && *s && isCONTROLVAR(*s)) {
+	*d = toCTRL(*s);
+	s++;
+    }
+    if (bracket) {
+	if (isSPACE(s[-1])) {
+	    while (s < send) {
+		const char ch = *s++;
+		if (!SPACE_OR_TAB(ch)) {
+		    *d = ch;
+		    break;
+		}
+	    }
+	}
+	if (isIDFIRST_lazy_if(d,UTF)) {
+	    d++;
+	    if (UTF) {
+		e = s;
+		while ((e < send && isALNUM_lazy_if(e,UTF)) || *e == ':') {
+		    e += UTF8SKIP(e);
+		    while (e < send && UTF8_IS_CONTINUED(*e) && is_utf8_mark((U8*)e))
+			e += UTF8SKIP(e);
+		}
+		Copy(s, d, e - s, char);
+		d += e - s;
+		s = e;
+	    }
+	    else {
+		while ((isALNUM(*s) || *s == ':') && d < e)
+		    *d++ = *s++;
+		if (d >= e)
+		    Perl_croak(aTHX_ ident_too_long);
+	    }
+	    *d = '\0';
+	    while (s < send && SPACE_OR_TAB(*s)) s++;
+	    if ((*s == '[' || (*s == '{' && strNE(dest, "sub")))) {
+		if (ckWARN(WARN_AMBIGUOUS) && keyword(dest, d - dest)) {
+		    const char *brack = *s == '[' ? "[...]" : "{...}";
+		    Perl_warner(aTHX_ packWARN(WARN_AMBIGUOUS),
+			"Ambiguous use of %c{%s%s} resolved to %c%s%s",
+			funny, dest, brack, funny, dest, brack);
+		}
+		bracket++;
+		PL_lex_brackstack[PL_lex_brackets++] = (char)(XOPERATOR | XFAKEBRACK);
+		return s;
+	    }
+	}
+	/* Handle extended ${^Foo} variables
+	 * 1999-02-27 mjd-perl-patch@plover.com */
+	else if (!isALNUM(*d) && !isPRINT(*d) /* isCTRL(d) */
+		 && isALNUM(*s))
+	{
+	    d++;
+	    while (isALNUM(*s) && d < e) {
+		*d++ = *s++;
+	    }
+	    if (d >= e)
+		Perl_croak(aTHX_ ident_too_long);
+	    *d = '\0';
+	}
+	if (*s == '}') {
+	    s++;
+	    if (PL_lex_state == LEX_INTERPNORMAL && !PL_lex_brackets) {
+		PL_lex_state = LEX_INTERPEND;
+		PL_expect = XREF;
+	    }
+	    if (funny == '#')
+		funny = '@';
+	    if (PL_lex_state == LEX_NORMAL) {
+		if (ckWARN(WARN_AMBIGUOUS) &&
+		    (keyword(dest, d - dest) || get_cv(dest, FALSE)))
+		{
+		    Perl_warner(aTHX_ packWARN(WARN_AMBIGUOUS),
+			"Ambiguous use of %c{%s} resolved to %c%s",
+			funny, dest, funny, dest);
+		}
+	    }
+	}
+	else {
+	    s = bracket;		/* let the parser handle it */
+	    *dest = '\0';
+	}
+    }
+    else if (PL_lex_state == LEX_INTERPNORMAL && !PL_lex_brackets && !intuit_more(s))
+	PL_lex_state = LEX_INTERPEND;
+    return s;
 }
