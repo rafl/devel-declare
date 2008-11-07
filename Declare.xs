@@ -179,6 +179,14 @@ int dd_toke_scan_word(pTHX_ int offset, int handle_package) {
   return s - base_s;
 }
 
+int dd_toke_scan_ident(pTHX_ int offset) {
+    char tmpbuf[sizeof PL_tokenbuf];
+    char* base_s = SvPVX(PL_linestr) + offset;
+    STRLEN len;
+    char* s = scan_ident(base_s, PL_bufend, tmpbuf, sizeof tmpbuf, 0);
+    return s - base_s;
+}
+
 int dd_toke_scan_str(pTHX_ int offset) {
   char* base_s = SvPVX(PL_linestr) + offset;
   char* s = scan_str(base_s, FALSE, FALSE);
@@ -402,6 +410,13 @@ int
 toke_scan_str(int offset);
   CODE:
     RETVAL = dd_toke_scan_str(aTHX_ offset);
+  OUTPUT:
+    RETVAL
+
+int
+toke_scan_ident(int offset)
+  CODE:
+    RETVAL = dd_toke_scan_ident(aTHX_ offset);
   OUTPUT:
     RETVAL
 
