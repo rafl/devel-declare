@@ -68,6 +68,21 @@ sub strip_name {
   return;
 }
 
+sub strip_ident {
+  my $self = shift;
+  $self->skipspace;
+  if (my $len = Devel::Declare::toke_scan_ident( $self->offset )) {
+    my $linestr = $self->get_linestr();
+    my $ident = substr( $linestr, $self->offset, $len );
+    substr( $linestr, $self->offset, $len ) = '';
+    $self->set_linestr($linestr);
+    return $ident;
+  }
+
+  $self->skipspace;
+  return;
+}
+
 sub strip_proto {
   my $self = shift;
   $self->skipspace;
