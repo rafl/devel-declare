@@ -53,6 +53,8 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
                (MEM_SIZE)((n)))));  \
      } STMT_END
 
+#define isCONTROLVAR(x) (isUPPER(x) || strchr("[\\]^_?", (x)))
+
 /* On MacOS, respect nonbreaking spaces */
 #ifdef MACOS_TRADITIONAL
 #define SPACE_OR_TAB(c) ((c)==' '||(c)=='\312'||(c)=='\t')
@@ -916,8 +918,11 @@ S_scan_ident(pTHX_ register char *s, register const char *send, char *dest, STRL
 	bracket = s;
 	s++;
     }
+    /* we always call this with ck_uni == 0 (rafl) */
+    /*
     else if (ck_uni)
 	check_uni();
+    */
     if (s < send)
 	*d = *s++;
     d[1] = '\0';
@@ -957,12 +962,17 @@ S_scan_ident(pTHX_ register char *s, register const char *send, char *dest, STRL
 	    *d = '\0';
 	    while (s < send && SPACE_OR_TAB(*s)) s++;
 	    if ((*s == '[' || (*s == '{' && strNE(dest, "sub")))) {
+		/* we don't want perl to guess what is meant. the keyword
+		 * parser decides that later. (rafl)
+		 */
+		/*
 		if (ckWARN(WARN_AMBIGUOUS) && keyword(dest, d - dest)) {
 		    const char *brack = *s == '[' ? "[...]" : "{...}";
 		    Perl_warner(aTHX_ packWARN(WARN_AMBIGUOUS),
 			"Ambiguous use of %c{%s%s} resolved to %c%s%s",
 			funny, dest, brack, funny, dest, brack);
 		}
+		*/
 		bracket++;
 		PL_lex_brackstack[PL_lex_brackets++] = (char)(XOPERATOR | XFAKEBRACK);
 		return s;
@@ -989,6 +999,10 @@ S_scan_ident(pTHX_ register char *s, register const char *send, char *dest, STRL
 	    }
 	    if (funny == '#')
 		funny = '@';
+	    /* we don't want perl to guess what is meant. the keyword
+	     * parser decides that later. (rafl)
+	     */
+	    /*
 	    if (PL_lex_state == LEX_NORMAL) {
 		if (ckWARN(WARN_AMBIGUOUS) &&
 		    (keyword(dest, d - dest) || get_cv(dest, FALSE)))
@@ -998,13 +1012,17 @@ S_scan_ident(pTHX_ register char *s, register const char *send, char *dest, STRL
 			funny, dest, funny, dest);
 		}
 	    }
+	    */
 	}
 	else {
 	    s = bracket;		/* let the parser handle it */
 	    *dest = '\0';
 	}
     }
+    /* don't intuit. we really just want the string. (rafl) */
+    /*
     else if (PL_lex_state == LEX_INTERPNORMAL && !PL_lex_brackets && !intuit_more(s))
 	PL_lex_state = LEX_INTERPEND;
+    */
     return s;
 }
