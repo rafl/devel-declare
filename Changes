@@ -1,5 +1,10 @@
 Changes for Devel-Declare
 
+0.003004
+  - Make magic work within string evals on 5.10 if the hints hash is used.
+  - Bind S_scan_ident to perl. It allows scanning for simple identifiers.
+  - Add strip_ident to Context::Simple.
+
 0.003003
   - Devel::Declare::MethodInstaller::Simple now has code_for() which the
     subclass can override to monkey with the magic shadowed subroutine.
