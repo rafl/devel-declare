@@ -114,7 +114,7 @@ char* dd_get_linestr(pTHX) {
 }
 
 void dd_set_linestr(pTHX_ char* new_value) {
-  int new_len = strlen(new_value);
+  unsigned int new_len = strlen(new_value);
 
   if (SvLEN(PL_linestr) < new_len) {
     croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
@@ -182,7 +182,6 @@ int dd_toke_scan_word(pTHX_ int offset, int handle_package) {
 int dd_toke_scan_ident(pTHX_ int offset) {
     char tmpbuf[sizeof PL_tokenbuf];
     char* base_s = SvPVX(PL_linestr) + offset;
-    STRLEN len;
     char* s = scan_ident(base_s, PL_bufend, tmpbuf, sizeof tmpbuf, 0);
     return s - base_s;
 }
@@ -205,6 +204,8 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
   dSP;
   OP* kid;
   int dd_flags;
+
+  PERL_UNUSED_VAR(user_data);
 
   if (in_declare) {
     if (dd_debug) {
@@ -299,6 +300,8 @@ OP* dd_pp_entereval(pTHX) {
 }
 
 STATIC OP *dd_ck_entereval(pTHX_ OP *o, void *user_data) {
+  PERL_UNUSED_VAR(user_data);
+
   if (o->op_ppaddr == PL_ppaddr[OP_ENTEREVAL])
     o->op_ppaddr = dd_pp_entereval;
   return o;
@@ -315,6 +318,8 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
 STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
   int dd_flags;
   char* name;
+
+  PERL_UNUSED_VAR(user_data);
 
   /* if this is set, we just grabbed a delimited string or something,
      not a bareword, so NO TOUCHY */
