@@ -15,8 +15,9 @@ TODO: {
 };
 
 TODO: {
-    local $TODO='method does not throw proper errors for bad parens yet';
+    local $TODO='method does not disallow invalid sub names';
     eval 'method 1main() { return "foo" }','Sub starting with a number';
     like($@,qr/Illegal\sdeclaration\sof\sanonymous\ssubroutine/); 
-
+    eval 'method møø() { return "foo" }','Sub with unicode';
+    like($@,qr/Illegal\sdeclaration\sof\ssubroutine\smain\:\:m/); 
 };
