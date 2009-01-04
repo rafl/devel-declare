@@ -9,7 +9,7 @@ all_from 'lib/Devel/Declare.pm';
 
 requires 'Scalar::Util';
 requires 'B::Hooks::OP::Check' => '0.10';
-requires 'B::Hooks::EndOfScope';
+requires 'B::Hooks::EndOfScope' => '0.05';
 requires 'Sub::Name';
 
 build_requires 'B::Hooks::OP::Check' => '0.10';
