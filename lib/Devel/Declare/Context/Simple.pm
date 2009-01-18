@@ -131,7 +131,9 @@ sub inject_if_block {
     substr($linestr, $self->offset + 1, 0) = $inject;
     substr($linestr, $self->offset, 0) = $before;
     $self->set_linestr($linestr);
+    return 1;
   }
+  return 0;
 }
 
 sub scope_injector_call {

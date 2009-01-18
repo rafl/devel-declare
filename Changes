@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+  - Context::Simple::inject_if_block now returns true if start of block was
+    found
+
 0.003004
   - Make magic work within string evals on 5.10 if the hints hash is used.
   - Bind S_scan_ident to perl. It allows scanning for simple identifiers.
