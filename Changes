@@ -1,7 +1,11 @@
 Changes for Devel-Declare
 
+0.003005
+  - Depend on a recent B::Hooks::EndOfScope to make semicolon injection more
+    robust (Florian Ragwitz).
+  - Add a couple of TODO tests for better error reporting (Marcus Ramberg).
   - Context::Simple::inject_if_block now returns true if start of block was
-    found
+    found (Ash Berlin).
 
 0.003004
   - Make magic work within string evals on 5.10 if the hints hash is used.
