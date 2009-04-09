@@ -36,8 +36,6 @@ static int in_declare = 0;
 #define DD_AM_LEXING DD_AM_LEXING_CHECK
 #endif
 
-static OP *previous_op = NULL;
-
 /* thing that decides whether we're dealing with a declarator */
 
 int dd_is_declarator(pTHX_ char* name) {
@@ -75,7 +73,7 @@ int dd_is_declarator(pTHX_ char* name) {
   /* requires SvIOK as well as TRUE since flags not being an int is useless */
 
   if (!is_declarator_flag_ref
-        || !SvIOK(*is_declarator_flag_ref) 
+        || !SvIOK(*is_declarator_flag_ref)
         || !SvTRUE(*is_declarator_flag_ref))
     return -1;
 
@@ -352,6 +350,7 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
     default:
       break;
   }
+
   dd_linestr_callback(aTHX_ "const", name);
 
   return o;
