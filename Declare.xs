@@ -55,7 +55,7 @@ int dd_is_declarator(pTHX_ char* name) {
   /* $declarators{$current_package_name} */
 
   if (!HvNAME(PL_curstash))
-	  return -1;
+    return -1;
 
   is_declarator_pack_ref = hv_fetch(is_declarator, HvNAME(PL_curstash),
                              strlen(HvNAME(PL_curstash)), FALSE);
@@ -345,6 +345,8 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
     case OP_MATCH:
     case OP_SUBST:
     case OP_TRANS:
+    case OP_BACKTICK:
+    case OP_STRINGIFY:
       return o;
       break;
     default:
