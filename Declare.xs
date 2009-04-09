@@ -340,28 +340,18 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
   if (dd_flags == -1)
     return o;
 
-  if (previous_op != NULL) {
-    switch (previous_op->op_type) {
-      case OP_QR:
-      case OP_MATCH:
-      case OP_SUBST:
-      case OP_TRANS:
-        return o;
-        break;
-      default:
-        break;
-    }
+  switch (PL_lex_inwhat) {
+    case OP_QR:
+    case OP_MATCH:
+    case OP_SUBST:
+    case OP_TRANS:
+      return o;
+      break;
+    default:
+      break;
   }
   dd_linestr_callback(aTHX_ "const", name);
 
-  return o;
-}
-
-STATIC OP *
-remember_previous_op (pTHX_ OP *o, void *user_data)
-{
-  PERL_UNUSED_VAR (user_data);
-  previous_op = o;
   return o;
 }
 
@@ -373,16 +363,11 @@ PROTOTYPES: DISABLE
 
 void
 setup()
-  PREINIT:
-    I32 i;
   CODE:
   if (!initialized++) {
     hook_op_check(OP_RV2CV, dd_ck_rv2cv, NULL);
     hook_op_check(OP_ENTEREVAL, dd_ck_entereval, NULL);
     hook_op_check(OP_CONST, dd_ck_const, NULL);
-  }
-  for (i = 0; i < OP_max; i++) {
-    (void)hook_op_check(i, remember_previous_op, NULL);
   }
   filter_add(dd_filter_realloc, NULL);
 
