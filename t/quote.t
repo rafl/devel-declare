@@ -8,17 +8,17 @@ sub test_eval;
 
 TODO: {
     local $TODO = "dd_ck_const doesn't special-case ops created in quotelike contexts";
-    test_eval 'qr/method/';
     test_eval 'qq/method/';
-    test_eval '/method/';
-    test_eval 's/method//';
     test_eval '`method`';
     test_eval 'qx/method/';
-    test_eval 'tr/method/METHOD/';
 
 }
 
 # these ones work OK
+test_eval 'qr/method/';
+test_eval '/method/';
+test_eval 's/method//';
+test_eval 'tr/method/METHOD/';
 test_eval 'q/method/';
 test_eval "'method'";
 test_eval '"method"';
