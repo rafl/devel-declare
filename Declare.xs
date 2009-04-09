@@ -340,6 +340,18 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
   if (dd_flags == -1)
     return o;
 
+  if (previous_op != NULL) {
+    switch (previous_op->op_type) {
+      case OP_QR:
+      case OP_MATCH:
+      case OP_SUBST:
+      case OP_TRANS:
+        return o;
+        break;
+      default:
+        break;
+    }
+  }
   dd_linestr_callback(aTHX_ "const", name);
 
   return o;
