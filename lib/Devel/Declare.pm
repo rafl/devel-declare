@@ -289,25 +289,161 @@ Devel::Declare - Adding keywords to perl, in perl
 
 =head1 SYNOPSIS
 
-  use Devel::Declare ();
-  
-  {
-    package MethodHandlers;
-  
-    use strict;
-    use warnings;
-    use B::Hooks::EndOfScope;
-  
+  use Method::Signatures;
+  # or ...
+  use MooseX::Declare;
+  # etc.
+
+  # Use some new and exciting syntax like:
+  method hello (Str :$who, Int :$age where { $_ > 0 }) {
+    $self->say("Hello ${who}, I am ${age} years old!");
+  }
+
+=head1 DESCRIPTION
+
+L<Devel::Declare> can install subroutines called declarators which locally take
+over Perl's parser, allowing the creation of new syntax.
+
+This document describes how to create a simple declarator.
+
+=head1 USAGE
+
+We'll demonstrate the usage of C<Devel::Declare> with a motivating example: a new
+C<method> keyword, which acts like the builtin C<sub>, but automatically unpacks
+C<$self> and the other arguments.
+
+  package My::Methods;
+  use Devel::Declare;
+
+=head2 Creating a declarator with C<setup_for>
+
+You will typically create
+
+  sub import {
+    my $class = shift;
+    my $caller = caller;
+
+    Devel::Declare->setup_for(
+        $caller,
+        { method => { const => \&parser } }
+    );
+    no strict 'refs';
+    *{$caller.'::method'} = sub (&) {};
+  }
+
+Starting from the end of this import routine, you'll see that we're creating a
+subroutine called C<method> in the caller's namespace.  Yes, that's just a normal
+subroutine, and it does nothing at all (yet!)  Note the prototype C<(&)> which means
+that the caller would call it like so:
+
+    method {
+        my ($self, $arg1, $arg2) = @_;
+        ...
+    }
+
+However we want to be able to call it like this
+
+    method foo ($arg1, $arg2) {
+        ...
+    }
+
+That's why we call C<setup_for> above, to register the declarator 'method' with a custom
+parser, as per the next section.  It acts on an optype, usually C<'const'> as above.
+(Other valid values are C<'check'> and C<'rv2cv'>).
+
+For a simpler way to install new methods, see also L<Devel::Declare::MethodInstaller::Simple>
+
+=head2 Writing a parser subroutine
+
+This subroutine is called at I<compilation> time, and allows you to read the custom
+syntaxes that we want (in a syntax that may or may not be valid core Perl 5) and
+munge it so that the result will be parsed by the C<perl> compiler.
+
+For this example, we're defining some globals for convenience:
+
     our ($Declarator, $Offset);
-  
+
+Then we define a parser subroutine to handle our declarator.  We'll look at this in
+a few chunks.
+
+    sub parser {
+      local ($Declarator, $Offset) = @_;
+
+C<Devel::Declare> provides some very low level utility methods to parse character
+strings.  We'll define some useful higher level routines below for convenience,
+and we can use these to parse the various elements in our new syntax.
+
+Notice how our parser subroutine is invoked at compile time,
+when the C<perl> parser is pointed just I<before> the declarator name.
+
+      skip_declarator;          # step past 'method'
+      my $name = strip_name;    # strip out the name 'foo', if present
+      my $proto = strip_proto;  # strip out the prototype '($arg1, $arg2)', if present
+
+Now we can prepare some code to 'inject' into the new subroutine.  For example we
+might want the method as above to have C<my ($self, $arg1, $arg2) = @_> injected at
+the beginning of it.  We also do some clever stuff with scopes that we'll look
+at shortly.
+
+      my $inject = make_proto_unwrap($proto);
+      if (defined $name) {
+        $inject = scope_injector_call().$inject;
+      }
+      inject_if_block($inject);
+
+We've now managed to change C<method ($arg1, $arg2) { ... }> into C<method {
+injected_code; ... }>.  This will compile...  but we've lost the name of the
+method!
+
+In a cute (or horrifying, depending on your perspective) trick, we temporarily
+change the definition of the subroutine C<method> itself, to specialise it with
+the C<$name> we stripped, so that it assigns the code block to that name.
+
+Even though the I<next> time C<method> is compiled, it will be
+redefined again, C<perl> caches these definitions in its parse
+tree, so we'll always get the right one!
+
+Note that we also handle the case where there was no name, allowing
+an anonymous method analogous to an anonymous subroutine.
+
+      if (defined $name) {
+        $name = join('::', Devel::Declare::get_curstash_name(), $name)
+          unless ($name =~ /::/);
+        shadow(sub (&) { no strict 'refs'; *{$name} = shift; });
+      } else {
+        shadow(sub (&) { shift });
+      }
+    }
+
+
+=head2 Parser utilities in detail
+
+For simplicity, we're using global variables like C<$Offset> in these examples.
+You may prefer to look at L<Devel::Declare::Context::Simple>, which
+encapsulates the context much more cleanly.
+
+=head3 C<skip_declarator>
+
+This simple parser just moves across a 'token'.  The common case is
+to skip the declarator, i.e.  to move to the end of the string
+'method' and before the prototype and code block.
+
     sub skip_declarator {
       $Offset += Devel::Declare::toke_move_past_token($Offset);
     }
-  
-    sub skipspace {
-      $Offset += Devel::Declare::toke_skipspace($Offset);
-    }
-  
+
+=head4 C<toke_move_past_token>
+
+This builtin parser simply moves past a 'token' (matching C</[a-zA-Z_]\w*/>)
+It takes an offset into the source document, and skips past the token.
+It returns the number of characters skipped.
+
+=head3 C<strip_name>
+
+This parser skips any whitespace, then scans the next word (again matching a
+'token').  We can then analyse the current line, and manipulate it (using pure
+Perl).  In this case we take the name of the method out, and return it.
+
     sub strip_name {
       skipspace;
       if (my $len = Devel::Declare::toke_scan_word($Offset, 1)) {
@@ -319,10 +455,43 @@ Devel::Declare - Adding keywords to perl, in perl
       }
       return;
     }
-  
+
+=head4 C<toke_scan_word>
+
+This builtin parser, given an offset into the source document,
+matches a 'token' as above but does not skip.  It returns the
+length of the token matched, if any.
+
+=head4 C<get_linestr>
+
+This builtin returns the full text of the current line of the source document.
+
+=head4 C<set_linestr>
+
+This builtin sets the full text of the current line of the source document.
+
+=head3 C<skipspace>
+
+This parser skips whitsepace.
+
+    sub skipspace {
+      $Offset += Devel::Declare::toke_skipspace($Offset);
+    }
+
+=head4 C<toke_skipspace>
+
+This builtin parser, given an offset into the source document,
+skips over any whitespace, and returns the number of characters
+skipped.
+
+=head3 C<strip_proto>
+
+This is a more complex parser that checks if it's found something that
+starts with C<'('> and returns everything till the matching C<')'>.
+
     sub strip_proto {
       skipspace;
-      
+
       my $linestr = Devel::Declare::get_linestr();
       if (substr($linestr, $Offset, 1) eq '(') {
         my $length = Devel::Declare::toke_scan_str($Offset);
@@ -335,16 +504,39 @@ Devel::Declare - Adding keywords to perl, in perl
       }
       return;
     }
-  
-    sub shadow {
-      my $pack = Devel::Declare::get_curstash_name;
-      Devel::Declare::shadow_sub("${pack}::${Declarator}", $_[0]);
-    }
-  
-    # undef  -> my ($self) = shift;
-    # ''     -> my ($self) = @_;
-    # '$foo' -> my ($self, $foo) = @_;
-  
+
+=head4 C<toke_scan_str>
+
+This builtin parser uses Perl's own parsing routines to match a "stringlike"
+expression.  Handily, this includes bracketed expressions (just think about
+things like C<q(this is a quote)>).
+
+Also it Does The Right Thing with nested delimiters (like C<q(this (is (a) quote))>).
+
+It returns the length of the expression matched.  Use C<get_lex_stuff> to
+get the actual matched text.
+
+=head4 C<get_lex_stuff>
+
+This builtin returns what was matched by C<toke_scan_str>.  To avoid segfaults,
+you should call C<clear_lex_stuff> immediately afterwards.
+
+=head2 Munging the subroutine
+
+Let's look at what we need to do in detail.
+
+=head3 C<make_proto_unwrap>
+
+We may have defined our method in different ways, which will result
+in a different value for our prototype, as parsed above.  For example:
+
+    method foo         {  # undefined
+    method foo ()      {  # ''
+    method foo ($arg1) {  # '$arg1'
+
+We deal with them as follows, and return the appropriate C<my ($self, ...) = @_;>
+string.
+
     sub make_proto_unwrap {
       my ($proto) = @_;
       my $inject = 'my ($self';
@@ -356,7 +548,13 @@ Devel::Declare - Adding keywords to perl, in perl
       }
       return $inject;
     }
-  
+
+=head3 C<inject_if_block>
+
+Now we need to inject it after the opening C<'{'> of the method body.
+We can do this with the building blocks we defined above like C<skipspace>
+and C<get_linestr>.
+
     sub inject_if_block {
       my $inject = shift;
       skipspace;
@@ -367,131 +565,100 @@ Devel::Declare - Adding keywords to perl, in perl
       }
     }
 
-    sub scope_injector_call {
-      return ' BEGIN { MethodHandlers::inject_scope }; ';
-    }
-  
-    sub parser {
-      local ($Declarator, $Offset) = @_;
-      skip_declarator;
-      my $name = strip_name;
-      my $proto = strip_proto;
-      my $inject = make_proto_unwrap($proto);
-      if (defined $name) {
-        $inject = scope_injector_call().$inject;
-      }
-      inject_if_block($inject);
-      if (defined $name) {
-        $name = join('::', Devel::Declare::get_curstash_name(), $name)
-          unless ($name =~ /::/);
-        shadow(sub (&) { no strict 'refs'; *{$name} = shift; });
-      } else {
-        shadow(sub (&) { shift });
-      }
-    }
-  
-    sub inject_scope {
-      on_scope_end {
-        my $linestr = Devel::Declare::get_linestr;
-        my $offset = Devel::Declare::get_linestr_offset;
-        substr($linestr, $offset, 0) = ';';
-        Devel::Declare::set_linestr($linestr);
-      };
-    }
+=head3 C<scope_injector_call>
+
+We want to be able to handle both named and anonymous methods.  i.e.
+
+    method foo () { ... }
+    my $meth = method () { ... };
+
+These will then get rewritten as
+
+    method { ... }
+    my $meth = method { ... };
+
+where 'method' is a subroutine that takes a code block.  Spot the problem?
+The first one doesn't have a semicolon at the end of it!  Unlike 'sub' which
+is a builtin, this is just a normal statement, so we need to terminate it.
+Luckily, using the bastard spawn of L<Scope::Guard> and some hints hash
+hackery, we can do this!
+
+  use Scope::Guard;
+
+We'll add this to what gets 'injected' at the beginning of the method source.
+
+  sub scope_injector_call {
+    return ' BEGIN { MethodHandlers::inject_scope }; ';
   }
-  
-  my ($test_method1, $test_method2, @test_list);
-  
-  {
-    package DeclareTest;
-  
-    sub method (&);
-  
-    BEGIN {
-      Devel::Declare->setup_for(
-        __PACKAGE__,
-        { method => { const => \&MethodHandlers::parser } }
-      );
-    }
-  
-    method new {
-      my $class = ref $self || $self;
-      return bless({ @_ }, $class);
-    }
-  
-    method foo ($foo) {
-      return (ref $self).': Foo: '.$foo;
-    }
-  
-    method upgrade(){ # no spaces to make case pathological
-      bless($self, 'DeclareTest2');
-    }
-  
-    method DeclareTest2::bar () {
-      return 'DeclareTest2: bar';
-    }
-  
-    $test_method1 = method {
-      return join(', ', $self->{attr}, $_[1]);
-    };
-  
-    $test_method2 = method ($what) {
-      return join(', ', ref $self, $what);
-    };
-  
-    method main () { return "main"; }
-  
-    @test_list = (method { 1 }, sub { 2 }, method () { 3 }, sub { 4 });
-  
+
+So at the beginning of every method, we assing a callback that will get invoked
+at the I<end> of the method's compilation... i.e. exactly then the closing C<'}'>
+is compiled.
+
+  sub inject_scope {
+    $^H |= 0x120000;
+    $^H{DD_METHODHANDLERS} = Scope::Guard->new(sub {
+      my $linestr = Devel::Declare::get_linestr;
+      my $offset = Devel::Declare::get_linestr_offset;
+      substr($linestr, $offset, 0) = ';';
+      Devel::Declare::set_linestr($linestr);
+    });
   }
-  
-  use Test::More 'no_plan';
-  
-  my $o = DeclareTest->new(attr => "value");
-  
-  isa_ok($o, 'DeclareTest');
-  
-  is($o->{attr}, 'value', '@_ args ok');
-  
-  is($o->foo('yay'), 'DeclareTest: Foo: yay', 'method with argument ok');
-  
-  is($o->main, 'main', 'declaration of package named method ok');
-  
-  $o->upgrade;
-  
-  isa_ok($o, 'DeclareTest2');
-  
-  is($o->bar, 'DeclareTest2: bar', 'absolute method declaration ok');
-  
-  is($o->$test_method1('no', 'yes'), 'value, yes', 'anon method with @_ ok');
-  
-  is($o->$test_method2('this'), 'DeclareTest2, this', 'anon method with proto ok');
-  
-  is_deeply([ map { $_->() } @test_list ], [ 1, 2, 3, 4], 'binding ok');
 
-(this is t/method-no-semi.t in this distribution)
+=head2 Shadowing each method.
 
-=head1 DESCRIPTION
+=head3 C<shadow>
 
-=head2 setup_for
+We override the current definition of 'method' using C<shadow>.
 
-  Devel::Declare->setup_for(
-    $package,
-    {
-      $name => { $op_type => $sub }
+    sub shadow {
+      my $pack = Devel::Declare::get_curstash_name;
+      Devel::Declare::shadow_sub("${pack}::${Declarator}", $_[0]);
     }
-  );
 
-Currently valid op types: 'check', 'rv2cv'
+For a named method we invoked like this:
+
+    shadow(sub (&) { no strict 'refs'; *{$name} = shift; });
+
+So in the case of a C<method foo { ... }>, this call would redefine C<method>
+to be a subroutine that exports 'sub foo' as the (munged) contents of C<{...}>.
+
+The case of an anonymous method is also cute:
+
+    shadow(sub (&) { shift });
+
+This means that
+
+    my $meth = method () { ... };
+
+is rewritten with C<method> taking the codeblock, and returning it as is to become
+the value of C<$meth>.
+
+=head4 C<get_curstash_name>
+
+This returns the package name I<currently being compiled>.
+
+=head4 C<shadow_sub>
+
+Handles the details of redefining the subroutine.
+
+=head1 SEE ALSO
+
+One of the best ways to learn C<Devel::Declare> is still to look at
+modules that use it:
+
+L<http://cpants.perl.org/dist/used_by/Devel-Declare>.
 
 =head1 AUTHORS
 
-Matt S Trout - <mst@shadowcat.co.uk>
+Matt S Trout - <mst@shadowcat.co.uk> - original author
 
 Company: http://www.shadowcat.co.uk/
 Blog: http://chainsawblues.vox.com/
 
-Florian Ragwitz E<lt>rafl@debian.orgE<gt>
+Florian Ragwitz E<lt>rafl@debian.orgE<gt> - maintainer
+
+osfameron E<lt>osfameron@cpan.org<gt> - first draft of documentation
 
 =head1 LICENSE
 
