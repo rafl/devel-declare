@@ -6,15 +6,9 @@ use Devel::Declare 'method' => sub {};
 
 sub test_eval;
 
-TODO: {
-    local $TODO = "dd_ck_const doesn't special-case ops created in quotelike contexts";
-    test_eval 'qq/method/';
-    test_eval '`method`';
-    test_eval 'qx/method/';
-
-}
-
-# these ones work OK
+test_eval 'qq/method/';
+test_eval '`method`';
+test_eval 'qx/method/';
 test_eval 'qr/method/';
 test_eval '/method/';
 test_eval 's/method//';
