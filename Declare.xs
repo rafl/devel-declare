@@ -36,6 +36,8 @@ static int in_declare = 0;
 #define DD_AM_LEXING DD_AM_LEXING_CHECK
 #endif
 
+static OP *previous_op = NULL;
+
 /* thing that decides whether we're dealing with a declarator */
 
 int dd_is_declarator(pTHX_ char* name) {
@@ -340,7 +342,15 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
 
   dd_linestr_callback(aTHX_ "const", name);
 
-  return o;  
+  return o;
+}
+
+STATIC OP *
+remember_previous_op (pTHX_ OP *o, void *user_data)
+{
+  PERL_UNUSED_VAR (user_data);
+  previous_op = o;
+  return o;
 }
 
 static int initialized = 0;
@@ -351,11 +361,16 @@ PROTOTYPES: DISABLE
 
 void
 setup()
+  PREINIT:
+    I32 i;
   CODE:
   if (!initialized++) {
     hook_op_check(OP_RV2CV, dd_ck_rv2cv, NULL);
     hook_op_check(OP_ENTEREVAL, dd_ck_entereval, NULL);
     hook_op_check(OP_CONST, dd_ck_const, NULL);
+  }
+  for (i = 0; i < OP_max; i++) {
+    (void)hook_op_check(i, remember_previous_op, NULL);
   }
   filter_add(dd_filter_realloc, NULL);
 
