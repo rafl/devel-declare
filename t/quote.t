@@ -16,17 +16,18 @@ TODO: {
     test_eval 'qx/method/';
     test_eval 'tr/method/METHOD/';
 
-    # these ones work OK
-    test_eval 'q/method/';
-    test_eval "'method'";
-    test_eval '"method"';
-    test_eval 'qw/method/';
-    test_eval '<<method;
+}
+
+# these ones work OK
+test_eval 'q/method/';
+test_eval "'method'";
+test_eval '"method"';
+test_eval 'qw/method/';
+test_eval '<<method;
 tum ti tum
 method';
-    test_eval 'no warnings "reserved"; open method, "</dev/null"';
-    test_eval '<method>';
-}
+test_eval 'no warnings "reserved"; open method, "</dev/null"';
+test_eval '<method>';
 
 sub test_eval {
     my $what = shift;
