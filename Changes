@@ -1,5 +1,12 @@
 Changes for Devel-Declare
 
+0.004000
+  - Much improved documentation (osfameron).
+  - Make sure the linestr callback isn't invoked when a declarator is used as
+    part of some quoting construct like qq//, m//, s///, qr//, tr///, qx//, ``,
+    etc (Florian Ragwitz).
+    - Tests for this (osfameron, Florian Ragwitz).
+
 0.003005
   - Depend on a recent B::Hooks::EndOfScope to make semicolon injection more
     robust (Florian Ragwitz).
