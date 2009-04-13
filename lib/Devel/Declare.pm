@@ -580,10 +580,9 @@ These will then get rewritten as
 where 'method' is a subroutine that takes a code block.  Spot the problem?
 The first one doesn't have a semicolon at the end of it!  Unlike 'sub' which
 is a builtin, this is just a normal statement, so we need to terminate it.
-Luckily, using the bastard spawn of L<Scope::Guard> and some hints hash
-hackery, we can do this!
+Luckily, using C<B::Hooks::EndOfScope>, we can do this!
 
-  use Scope::Guard;
+  use B::Hooks::EndOfScope;
 
 We'll add this to what gets 'injected' at the beginning of the method source.
 
@@ -596,13 +595,12 @@ at the I<end> of the method's compilation... i.e. exactly then the closing C<'}'
 is compiled.
 
   sub inject_scope {
-    $^H |= 0x120000;
-    $^H{DD_METHODHANDLERS} = Scope::Guard->new(sub {
+    on_scope_end {
       my $linestr = Devel::Declare::get_linestr;
       my $offset = Devel::Declare::get_linestr_offset;
       substr($linestr, $offset, 0) = ';';
       Devel::Declare::set_linestr($linestr);
-    });
+    };
   }
 
 =head2 Shadowing each method.
