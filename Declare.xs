@@ -187,7 +187,7 @@ int dd_toke_scan_ident(pTHX_ int offset) {
 }
 
 int dd_toke_scan_str(pTHX_ int offset) {
-  int remaining = sv_len(PL_linestr) - offset;
+  STRLEN remaining = sv_len(PL_linestr) - offset;
   SV* line_copy = newSVsv(PL_linestr);
   char* base_s = SvPVX(PL_linestr) + offset;
   char* s = scan_str(base_s, FALSE, FALSE);
