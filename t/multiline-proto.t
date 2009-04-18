@@ -21,4 +21,4 @@ use Devel::Declare fun => [ DECLARE_PROTO, \&handle_fun ];
 my $foo = fun ($a,
 $b) { "woot" };
 
-is($foo->(), '$a, $b: woot', 'proto declarator ok');
+is($foo->(), "\$a,\n\$b: woot", 'proto declarator ok');
