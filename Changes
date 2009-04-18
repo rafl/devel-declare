@@ -1,5 +1,10 @@
 Changes for Devel-Declare
 
+0.005000
+  - Port the documentation from %^H and Scope::Guard to B::Hooks::EndOfScope.
+  - Fix extracting multi-line strings using scan_str.
+  - Remove the nasty workaround for the above from Context::Simple.
+
 0.004000
   - Much improved documentation (osfameron).
   - Make sure the linestr callback isn't invoked when a declarator is used as
