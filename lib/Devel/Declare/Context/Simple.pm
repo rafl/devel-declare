@@ -92,14 +92,7 @@ sub strip_proto {
     my $length = Devel::Declare::toke_scan_str($self->offset);
     my $proto = Devel::Declare::get_lex_stuff();
     Devel::Declare::clear_lex_stuff();
-    if( $length < 0 ) {
-      # Need to scan ahead more
-      $linestr .= $self->get_linestr();
-      $length = rindex($linestr, ")") - $self->offset + 1;
-    }
-    else {
-      $linestr = $self->get_linestr();
-    }
+    $linestr = $self->get_linestr();
 
     substr($linestr, $self->offset, $length) = '';
     $self->set_linestr($linestr);
