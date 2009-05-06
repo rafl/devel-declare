@@ -1,5 +1,11 @@
 Changes for Devel-Declare
 
+0.005001
+  - Implement skip_declarator in terms of scan_word in Context::Simple.
+    This avoids relying on PL_tokenbuf to skip past the declarator, as
+    PL_tokenbuf might be overwritten by compiling other code between calling
+    the linestr callback and skip_declarator.
+
 0.005000
   - Port the documentation from %^H and Scope::Guard to B::Hooks::EndOfScope.
   - Fix extracting multi-line strings using scan_str.
