@@ -1,9 +1,10 @@
 package Devel::Declare::Context::Simple;
 
-use Devel::Declare ();
-use B::Hooks::EndOfScope;
 use strict;
 use warnings;
+use Devel::Declare ();
+use B::Hooks::EndOfScope;
+use Carp qw/confess/;
 
 sub new {
   my $class = shift;
@@ -33,7 +34,17 @@ sub declarator {
 
 sub skip_declarator {
   my $self = shift;
-  $self->inc_offset(Devel::Declare::toke_move_past_token($self->offset));
+  my $decl = $self->declarator;
+  my $len = Devel::Declare::toke_scan_word($self->offset, 0);
+  confess "Couldn't find declarator '$decl'"
+    unless $len;
+
+  my $linestr = $self->get_linestr;
+  my $name = substr($linestr, $self->offset, $len);
+  confess "Expected declarator '$decl', got '${name}'"
+    unless $name eq $decl;
+
+  $self->inc_offset($len);
 }
 
 sub skipspace {
