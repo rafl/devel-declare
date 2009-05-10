@@ -12,7 +12,9 @@ BEGIN {
 
 ok(!main->can('foo'), 'foo() not installed yet');
 
-method foo { }
+method foo {
+    $_[0]->method
+}
 
 ok(main->can('foo'), 'foo() installed at runtime');
 
