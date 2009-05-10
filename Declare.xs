@@ -330,6 +330,10 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
 
   PERL_UNUSED_VAR(user_data);
 
+  if (DD_HAVE_PARSER && PL_expect == XOPERATOR) {
+    return o;
+  }
+
   /* if this is set, we just grabbed a delimited string or something,
      not a bareword, so NO TOUCHY */
 
