@@ -656,7 +656,7 @@ Blog: http://chainsawblues.vox.com/
 
 Florian Ragwitz E<lt>rafl@debian.orgE<gt> - maintainer
 
-osfameron E<lt>osfameron@cpan.org<gt> - first draft of documentation
+osfameron E<lt>osfameron@cpan.orgE<gt> - first draft of documentation
 
 =head1 LICENSE
 
