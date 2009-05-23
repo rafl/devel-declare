@@ -35,7 +35,7 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #define DPTR2FPTR(t,p) ((t)PTR2nat(p))  /* data pointer to function pointer */
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
 #define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
-#define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),
+/*#define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),*/
 
 /* conditionalise these two because as of 5.9.5 we already get them from
    the headers (mst) */
@@ -136,12 +136,17 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #define PL_tokenbuf             (PL_parser->tokenbuf)
 #define PL_multi_end            (PL_parser->multi_end)
 #define PL_error_count          (PL_parser->error_count)
-/* these three are from the non-PERL_MAD path but I don't -think- I need
+#define PL_nexttoke           (PL_parser->nexttoke)
+/* these are from the non-PERL_MAD path but I don't -think- I need
    the PERL_MAD stuff since my code isn't really populating things (mst) */
-#  define PL_nexttoke           (PL_parser->nexttoke)
+# ifdef PERL_MAD
+#  define PL_curforce		(PL_parser->curforce)
+#  define PL_lasttoke		(PL_parser->lasttoke)
+# else
 #  define PL_nexttype           (PL_parser->nexttype)
 #  define PL_nextval            (PL_parser->nextval)
-/* end of backcompat macros form 5.9 toke.c (mst) */
+# endif
+/* end of backcompat macros from 5.9 toke.c (mst) */
 #endif
 
 /* when ccflags include -DDEBUGGING we need this for earlier 5.8 perls */
@@ -843,6 +848,17 @@ S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims)
 STATIC void
 S_force_next(pTHX_ I32 type)
 {
+    dVAR;
+#ifdef PERL_MAD
+    if (PL_curforce < 0)
+    start_force(PL_lasttoke);
+    PL_nexttoke[PL_curforce].next_type = type;
+    if (PL_lex_state != LEX_KNOWNEXT)
+    PL_lex_defer = PL_lex_state;
+    PL_lex_state = LEX_KNOWNEXT;
+    PL_lex_expect = PL_expect;
+    PL_curforce = -1;
+#else
     PL_nexttype[PL_nexttoke] = type;
     PL_nexttoke++;
     if (PL_lex_state != LEX_KNOWNEXT) {
@@ -850,6 +866,7 @@ S_force_next(pTHX_ I32 type)
   PL_lex_expect = PL_expect;
   PL_lex_state = LEX_KNOWNEXT;
     }
+#endif
 }
 
 #define XFAKEBRACK 128
