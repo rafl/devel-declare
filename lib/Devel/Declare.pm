@@ -658,7 +658,11 @@ Florian Ragwitz E<lt>rafl@debian.orgE<gt> - maintainer
 
 osfameron E<lt>osfameron@cpan.orgE<gt> - first draft of documentation
 
-=head1 LICENSE
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2007, 2008, 2009  Matt S Trout
+
+Copyright (c) 2008, 2009  Florian Ragwitz
 
 This library is free software under the same terms as perl itself
 
