@@ -590,7 +590,7 @@ We'll add this to what gets 'injected' at the beginning of the method source.
     return ' BEGIN { MethodHandlers::inject_scope }; ';
   }
 
-So at the beginning of every method, we assing a callback that will get invoked
+So at the beginning of every method, we are passing a callback that will get invoked
 at the I<end> of the method's compilation... i.e. exactly then the closing C<'}'>
 is compiled.
 
