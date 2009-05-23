@@ -649,7 +649,7 @@ L<http://cpants.perl.org/dist/used_by/Devel-Declare>.
 
 =head1 AUTHORS
 
-Matt S Trout - <mst@shadowcat.co.uk> - original author
+Matt S Trout - E<lt>mst@shadowcat.co.ukE<gt> - original author
 
 Company: http://www.shadowcat.co.uk/
 Blog: http://chainsawblues.vox.com/
