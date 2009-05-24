@@ -133,9 +133,9 @@ sub strip_names_and_args {
     while (1) {
       # Get the bareword
       my $thing = $self->strip_name;
-      # If there's no bareword here, bail the caller can check if
-      # we returned anything.
-      return unless defined $thing;
+      # If there's no bareword here, bail
+      confess "failed to parse bareword. found ${linestr}"
+        unless defined $thing;
 
       $linestr = $self->get_linestr;
       if (substr($linestr, $self->offset, 1) eq '(') {
@@ -168,14 +168,14 @@ sub strip_names_and_args {
     }
     else {
       # fail if it isn't there
-      #FIXME
+      confess "couldn't find closing paren for argument. found ${linestr}"
     }
   } else {
     # No parens, so expect a single arg
     my $thing = $self->strip_name;
-    # If there's no bareword here, bail the caller can check if
-    # we returned anything.
-    return unless defined $thing;
+    # If there's no bareword here, bail
+    confess "failed to parse bareword. found ${linestr}"
+      unless defined $thing;
     $linestr = $self->get_linestr;
     if (substr($linestr, $self->offset, 1) eq '(') {
       # This one had a proto, pull it out
