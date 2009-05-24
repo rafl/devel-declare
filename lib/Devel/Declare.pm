@@ -660,11 +660,16 @@ osfameron E<lt>osfameron@cpan.orgE<gt> - first draft of documentation
 
 =head1 COPYRIGHT AND LICENSE
 
+This library is free software under the same terms as perl itself
+
 Copyright (c) 2007, 2008, 2009  Matt S Trout
 
 Copyright (c) 2008, 2009  Florian Ragwitz
 
-This library is free software under the same terms as perl itself
+stolen_chunk_of_toke.c based on toke.c from the perl core, which is
+
+Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+2000, 2001, 2002, 2003, 2004, 2005, 2006, by Larry Wall and others
 
 =cut
 
