@@ -1,5 +1,11 @@
 Changes for Devel-Declare
 
+0.005003
+  - Failing tests for line number issues (Ash Berlin).
+  - Add strip_names_and_args (Cory Watson).
+  - Various pod fixes (Yanick Champoux, Florian Ragwitz).
+  - Add copyright statements.
+
 0.005002
   - Don't invoke the linestr callback if the parser was expecting an operator.
     This makes calling a method with the name of a declarator work.
