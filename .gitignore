@@ -11,7 +11,7 @@ MANIFEST*
 !MANIFEST.SKIP
 Debian*
 README
-Devel-Declare
+Devel-Declare-*
 *.bs
 Declare.*
 !Declare.xs
