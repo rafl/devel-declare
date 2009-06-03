@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.005004
+  - Don't redefine MEM_WRAP_CHECK_ if it's already defined, getting rid of
+    compilation errors on some perls (Maik Fischer).
+
 0.005003
   - Failing tests for line number issues (Ash Berlin).
   - Add strip_names_and_args (Cory Watson).
