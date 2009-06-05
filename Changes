@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.005005
+  - Improve compatibility with MAD-enabled perls
+    (Reini Urban, Closes RT#45779).
+
 0.005004
   - Don't redefine MEM_WRAP_CHECK_ if it's already defined, getting rid of
     compilation errors on some perls (Maik Fischer).
