@@ -113,6 +113,82 @@ sub strip_proto {
   return;
 }
 
+sub strip_names_and_args {
+  my $self = shift;
+  $self->skipspace;
+
+  my @args;
+
+  my $linestr = $self->get_linestr;
+  if (substr($linestr, $self->offset, 1) eq '(') {
+    # We had a leading paren, so we will now expect comma separated
+    # arguments
+    substr($linestr, $self->offset, 1) = '';
+    $self->set_linestr($linestr);
+    $self->skipspace;
+
+    # At this point we expect to have a comma-separated list of
+    # barewords with optional protos afterward, so loop until we
+    # run out of comma-separated values
+    while (1) {
+      # Get the bareword
+      my $thing = $self->strip_name;
+      # If there's no bareword here, bail
+      confess "failed to parse bareword. found ${linestr}"
+        unless defined $thing;
+
+      $linestr = $self->get_linestr;
+      if (substr($linestr, $self->offset, 1) eq '(') {
+        # This one had a proto, pull it out
+        push(@args, [ $thing, $self->strip_proto ]);
+      } else {
+        # This had no proto, so store it with an undef
+        push(@args, [ $thing, undef ]);
+      }
+      $self->skipspace;
+      $linestr = $self->get_linestr;
+
+      if (substr($linestr, $self->offset, 1) eq ',') {
+        # We found a comma, strip it out and set things up for
+        # another iteration
+        substr($linestr, $self->offset, 1) = '';
+        $self->set_linestr($linestr);
+        $self->skipspace;
+      } else {
+        # No comma, get outta here
+        last;
+      }
+    }
+
+    # look for the final closing paren of the list
+    if (substr($linestr, $self->offset, 1) eq ')') {
+      substr($linestr, $self->offset, 1) = '';
+      $self->set_linestr($linestr);
+      $self->skipspace;
+    }
+    else {
+      # fail if it isn't there
+      confess "couldn't find closing paren for argument. found ${linestr}"
+    }
+  } else {
+    # No parens, so expect a single arg
+    my $thing = $self->strip_name;
+    # If there's no bareword here, bail
+    confess "failed to parse bareword. found ${linestr}"
+      unless defined $thing;
+    $linestr = $self->get_linestr;
+    if (substr($linestr, $self->offset, 1) eq '(') {
+      # This one had a proto, pull it out
+      push(@args, [ $thing, $self->strip_proto ]);
+    } else {
+      # This had no proto, so store it with an undef
+      push(@args, [ $thing, undef ]);
+    }
+  }
+
+  return \@args;
+}
+
 sub get_curstash_name {
   return Devel::Declare::get_curstash_name;
 }

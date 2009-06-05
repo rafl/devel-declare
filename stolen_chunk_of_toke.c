@@ -35,7 +35,6 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #define DPTR2FPTR(t,p) ((t)PTR2nat(p))  /* data pointer to function pointer */
 #define FPTR2DPTR(t,p) ((t)PTR2nat(p))  /* function pointer to data pointer */
 #define PTR2nat(p)       (PTRV)(p)       /* pointer to integer of PTRSIZE */
-/*#define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),*/
 
 /* conditionalise these two because as of 5.9.5 we already get them from
    the headers (mst) */
@@ -44,6 +43,9 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #endif
 #ifndef SvPVX_const
 #define SvPVX_const(sv) ((const char*) (0 + SvPVX(sv)))
+#endif
+#ifndef MEM_WRAP_CHECK_
+#define MEM_WRAP_CHECK_(n,t) MEM_WRAP_CHECK(n,t),
 #endif
 
 #define SvPV_renew(sv,n) \

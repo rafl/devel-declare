@@ -30,6 +30,14 @@ use Devel::Declare ();
     $ctx->skip_declarator;
     my $name = $ctx->strip_name;
     my $proto = $ctx->strip_proto;
+
+    # Check for an 'is' to test strip_name_and_args
+    my $word = $ctx->strip_name;
+    my $traits;
+    if (defined($word) && ($word eq 'is')) {
+      $traits = $ctx->strip_names_and_args;
+    }
+
     my $inject = make_proto_unwrap($proto);
     if (defined $name) {
       $inject = $ctx->scope_injector_call().$inject;
@@ -38,7 +46,14 @@ use Devel::Declare ();
     if (defined $name) {
       $name = join('::', Devel::Declare::get_curstash_name(), $name)
         unless ($name =~ /::/);
-      $ctx->shadow(sub (&) { no strict 'refs'; *{$name} = shift; });
+      # for trait testing we're just interested in the trait parse result, not
+      # the method body and its injections
+      $ctx->shadow(sub (&) {
+        no strict 'refs';
+        *{$name} = $traits
+          ? sub { $traits }
+          : shift;
+      });
     } else {
       $ctx->shadow(sub (&) { shift });
     }
@@ -67,6 +82,14 @@ my ($test_method1, $test_method2, @test_list);
 
   method foo ($foo) {
     return (ref $self).': Foo: '.$foo;
+  }
+
+  method has_many_traits() is (Trait1, Trait2(foo => 'bar'), Baz(one, two)) {
+    return 1;
+  }
+
+  method has_a_trait() is Foo1 {
+    return 1;
   }
 
   method upgrade(){ # no spaces to make case pathological
@@ -123,6 +146,18 @@ is($o->main, 'main', 'declaration of package named method ok');
 is($o->multiline1(3), '33', 'multiline1 proto ok');
 is($o->multiline2(1,2), '1 2', 'multiline2 proto ok');
 is($o->multiline3(4,5), '5 4', 'multiline3 proto ok');
+
+is_deeply(
+  $o->has_many_traits,
+  [['Trait1', undef], ['Trait2', q[foo => 'bar']], ['Baz', 'one, two']],
+  'extracting multiple traits',
+);
+
+is_deeply(
+  $o->has_a_trait,
+  [['Foo1', undef]],
+  'extract one trait without arguments',
+);
 
 $o->upgrade;
 
