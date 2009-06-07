@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.005006
+  - Fix compilation on 5.8 perls.
+
 0.005005
   - Improve compatibility with MAD-enabled perls
     (Reini Urban, Closes RT#45779).
