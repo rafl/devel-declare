@@ -850,8 +850,8 @@ S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims)
 STATIC void
 S_force_next(pTHX_ I32 type)
 {
-    dVAR;
 #ifdef PERL_MAD
+    dVAR;
     if (PL_curforce < 0)
     start_force(PL_lasttoke);
     PL_nexttoke[PL_curforce].next_type = type;
