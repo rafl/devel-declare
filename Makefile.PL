@@ -7,15 +7,18 @@ use ExtUtils::Depends;
 name 'Devel-Declare';
 all_from 'lib/Devel/Declare.pm';
 
-requires 'Scalar::Util';
-requires 'B::Hooks::OP::Check' => '0.10';
+requires 'Scalar::Util' => 1.11; # set_prototype appeared in this version
+requires 'B::Hooks::OP::Check' => '0.18';
 requires 'B::Hooks::EndOfScope' => '0.05';
 requires 'Sub::Name';
 
-build_requires 'B::Hooks::OP::Check' => '0.10';
+build_requires 'B::Hooks::OP::Check' => '0.18';
 
-configure_requires 'ExtUtils::Depends';
-configure_requires 'B::Hooks::OP::Check' => '0.10';
+# minimum version that works on Win32+gcc
+configure_requires 'ExtUtils::Depends' => 0.302;
+
+# minimum version that depends on ExtUtils::Depends 0.302
+configure_requires 'B::Hooks::OP::Check' => '0.18';
 
 postamble(<<'EOM');
 $(OBJECT) : stolen_chunk_of_toke.c
