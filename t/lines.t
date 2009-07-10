@@ -47,9 +47,6 @@ my $line2 = __LINE__;
 #line 48
 is(@lines, 2, "2 line numbers recorded");
 is $lines[0], 100, "fun starts on line 100";
-{
-  local $TODO = "line numbers aren't quite right yet, sometimes";
-  is $lines[1], 101, "fun stops on line 101";
-  is $line, 102, "next statement on line 102";
-  is $line2, 103, "next statement on line 103";
-}
+is $lines[1], 101, "fun stops on line 101";
+is $line, 102, "next statement on line 102";
+is $line2, 103, "next statement on line 103";

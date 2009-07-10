@@ -64,6 +64,19 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
 #define SPACE_OR_TAB(c) ((c)==' '||(c)=='\t')
 #endif
 
+/*
+ * Normally, during compile time, PL_curcop == &PL_compiling is true. However,
+ * Devel::Declare makes the interpreter call back to perl during compile time,
+ * which temporarily enters runtime. Then perl space calls various functions
+ * from this file, which are designed to work during compile time. They all
+ * happen to operate on PL_curcop, not PL_compiling. That doesn't make a
+ * difference in the core, but it does for Devel::Declare, which operates at
+ * runtime, but still wants to mangle the things that are about to be compiled.
+ * That's why we define our own PL_curcop and make it point to PL_compiling
+ * here.
+ */
+#define PL_curcop &PL_compiling
+
 #define CLINE (PL_copline = (CopLINE(PL_curcop) < PL_copline ? CopLINE(PL_curcop) : PL_copline))
 
 #define LEX_NORMAL    10 /* normal code (ie not within "...")     */
