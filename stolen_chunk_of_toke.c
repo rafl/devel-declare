@@ -75,7 +75,8 @@ STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow
  * That's why we define our own PL_curcop and make it point to PL_compiling
  * here.
  */
-#define PL_curcop &PL_compiling
+#undef PL_curcop
+#define PL_curcop (&PL_compiling)
 
 #define CLINE (PL_copline = (CopLINE(PL_curcop) < PL_copline ? CopLINE(PL_curcop) : PL_copline))
 
