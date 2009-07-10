@@ -1,5 +1,7 @@
 Changes for Devel-Declare
 
+  - Fix line numbers not being updated from skipspace calls
+
 0.005006
   - Fix compilation on 5.8 perls.
 
