@@ -1,5 +1,7 @@
 Changes for Devel-Declare
 
+  - Conditionally expand linestrings under perl debugger.
+
 0.005007 - 13 Jul 2009
   - Fix line numbers not being updated from skipspace calls
 

@@ -11,6 +11,11 @@
 # define Newx(v,n,t) New(0,v,n,t)
 #endif /* !Newx */
 
+#define DD_DEBUGf_UPDATED_LINESTR 1
+#define DD_DEBUGf_TRACE 2
+
+#define DD_DEBUG_UPDATED_LINESTR (dd_debug & DD_DEBUGf_UPDATED_LINESTR)
+#define DD_DEBUG_TRACE (dd_debug & DD_DEBUGf_TRACE)
 static int dd_debug = 0;
 
 #define LEX_NORMAL    10
@@ -128,6 +133,17 @@ void dd_set_linestr(pTHX_ char* new_value) {
   SvCUR_set(PL_linestr, new_len);
 
   PL_bufend = SvPVX(PL_linestr) + new_len;
+
+	if ( DD_DEBUG_UPDATED_LINESTR && PERLDB_LINE && PL_curstash != PL_debstash) {
+    // Cribbed from toke.c
+    SV * const sv = NEWSV(85,0);
+
+    sv_upgrade(sv, SVt_PVMG);
+    sv_setpvn(sv,PL_bufptr,PL_bufend-PL_bufptr);
+    (void)SvIOK_on(sv);
+    SvIV_set(sv, 0);
+    av_store(CopFILEAV(&PL_compiling),(I32)CopLINE(&PL_compiling),sv);
+  }
 }
 
 char* dd_get_lex_stuff(pTHX) {
@@ -218,7 +234,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
   PERL_UNUSED_VAR(user_data);
 
   if (in_declare) {
-    if (dd_debug) {
+    if (DD_DEBUG_TRACE) {
       printf("Deconstructing declare\n");
       printf("PL_bufptr: %s\n", PL_bufptr);
       printf("bufend at: %i\n", PL_bufend - PL_bufptr);
@@ -236,7 +252,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
     FREETMPS;
     LEAVE;
 
-    if (dd_debug) {
+    if (DD_DEBUG_TRACE) {
       printf("PL_bufptr: %s\n", PL_bufptr);
       printf("bufend at: %i\n", PL_bufend - PL_bufptr);
       printf("linestr: %s\n", SvPVX(PL_linestr));
@@ -254,7 +270,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
   if (!DD_AM_LEXING)
     return o; /* not lexing? */
 
-  if (dd_debug) {
+  if (DD_DEBUG_TRACE) {
     printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
   }
 
@@ -263,7 +279,7 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
   if (dd_flags == -1)
     return o;
 
-  if (dd_debug) {
+  if (DD_DEBUG_TRACE) {
     printf("dd_flags are: %i\n", dd_flags);
     printf("PL_tokenbuf: %s\n", PL_tokenbuf);
   }
@@ -286,7 +302,7 @@ OP* dd_pp_entereval(pTHX) {
 #endif
   sv = POPs;
   if (SvPOK(sv)) {
-    if (dd_debug) {
+    if (DD_DEBUG_TRACE) {
       printf("mangling eval sv\n");
     }
     if (SvREADONLY(sv))
@@ -473,5 +489,5 @@ set_in_declare(int value)
 
 BOOT:
   if (getenv ("DD_DEBUG")) {
-    dd_debug = 1;
+    dd_debug = atoi(getenv("DD_DEBUG"));
   }
