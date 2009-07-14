@@ -1,19 +1,20 @@
 Changes for Devel-Declare
 
+0.005007 - 13 Jul 2009
   - Fix line numbers not being updated from skipspace calls
 
-0.005006
+0.005006 - 16 Jun 2009
   - Fix compilation on 5.8 perls.
 
-0.005005
+0.005005 - 05 Jun 2009
   - Improve compatibility with MAD-enabled perls
     (Reini Urban, Closes RT#45779).
 
-0.005004
+0.005004 - 03 Jun 2009
   - Don't redefine MEM_WRAP_CHECK_ if it's already defined, getting rid of
     compilation errors on some perls (Maik Fischer).
 
-0.005003
+0.005003 - 24 May 2009
   - Failing tests for line number issues (Ash Berlin).
   - Add strip_names_and_args (Cory Watson).
   - Various pod fixes (Yanick Champoux, Florian Ragwitz).

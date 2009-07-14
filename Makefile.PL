@@ -1,4 +1,4 @@
-use inc::Module::Install 0.67;
+use inc::Module::Install 0.91;
 
 use 5.008001;
 
@@ -25,7 +25,7 @@ my $pkg = ExtUtils::Depends->new('Devel::Declare', 'B::Hooks::OP::Check');
 
 WriteMakefile(
   dist => {
-    PREOP => 'pod2text lib/Devel/Declare.pm >$(DISTVNAME)/README'
+    PREOP => 'pod2text lib/Devel/Declare.pm >README'
   },
   $pkg->get_makefile_vars,
 );

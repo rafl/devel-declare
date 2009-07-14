@@ -117,10 +117,11 @@ void dd_set_linestr(pTHX_ char* new_value) {
   unsigned int new_len = strlen(new_value);
 
   if (SvLEN(PL_linestr) < new_len) {
-    croak("forced to realloc PL_linestr for line %s, bailing out before we crash harder", SvPVX(PL_linestr));
+    croak("PL_linestr not long enough, was Devel::Declare loaded soon enough in %s",
+      CopFILE(&PL_compiling)
+    );
   }
 
-  SvGROW(PL_linestr, new_len);
 
   memcpy(SvPVX(PL_linestr), new_value, new_len+1);
 
