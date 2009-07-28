@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-our $VERSION = '0.005007';
+our $VERSION = '0.005008';
 
 use constant DECLARE_NAME => 1;
 use constant DECLARE_PROTO => 2;

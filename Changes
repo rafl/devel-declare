@@ -1,5 +1,6 @@
 Changes for Devel-Declare
 
+  - Depend on the latest ExtUtils::Depends for win32+gcc support.
   - Conditionally expand linestrings under perl debugger.
 
 0.005007 - 13 Jul 2009
