@@ -15,7 +15,7 @@ open PERLDB, ">", "$Bin/../.perldb" or die "Cannot open $Bin/../.perldb: $!";
 close PERLDB;
 
 $SIG{CHLD} = 'IGNORE';
-$SIG{ALRM} = sub { 
+$SIG{ALRM} = sub {
   fail("SIGALRM timeout triggered");
   kill(9, $$);
 };

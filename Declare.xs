@@ -134,7 +134,7 @@ void dd_set_linestr(pTHX_ char* new_value) {
 
   PL_bufend = SvPVX(PL_linestr) + new_len;
 
-	if ( DD_DEBUG_UPDATED_LINESTR && PERLDB_LINE && PL_curstash != PL_debstash) {
+  if ( DD_DEBUG_UPDATED_LINESTR && PERLDB_LINE && PL_curstash != PL_debstash) {
     // Cribbed from toke.c
     SV * const sv = NEWSV(85,0);
 
@@ -488,6 +488,11 @@ set_in_declare(int value)
     in_declare = value;
 
 BOOT:
-  if (getenv ("DD_DEBUG")) {
-    dd_debug = atoi(getenv("DD_DEBUG"));
+  char *endptr;
+  char *debug_str = getenv ("DD_DEBUG");
+  if (debug_str) {
+    dd_debug = strtol (debug_str, &endptr, 10);
+    if (*endptr != '\0') {
+      dd_debug = 0;
+    }
   }
