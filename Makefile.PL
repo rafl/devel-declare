@@ -20,6 +20,8 @@ configure_requires 'ExtUtils::Depends' => 0.302;
 # minimum version that depends on ExtUtils::Depends 0.302
 configure_requires 'B::Hooks::OP::Check' => '0.18';
 
+repository 'git://github.com/rafl/devel-declare.git';
+
 postamble(<<'EOM');
 $(OBJECT) : stolen_chunk_of_toke.c
 EOM
