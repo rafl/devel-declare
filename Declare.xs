@@ -488,6 +488,7 @@ set_in_declare(int value)
     in_declare = value;
 
 BOOT:
+{
   char *endptr;
   char *debug_str = getenv ("DD_DEBUG");
   if (debug_str) {
@@ -496,3 +497,4 @@ BOOT:
       dd_debug = 0;
     }
   }
+}
