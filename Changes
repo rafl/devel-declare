@@ -1,5 +1,10 @@
 Changes for Devel-Declare
 
+0.005009 - 10 Aug 2009
+  - Stop mixing declarations with code. (Closes: RT#48548) (Cosimo Streppone)
+  - Move strip_attrs, which is a purely parsing method, from
+    MethodInstaller::Simple to Context::Simple (nperez).
+
 0.005008 - 27 Jul 2009
   - Depend on the latest ExtUtils::Depends for win32+gcc support.
   - Conditionally expand linestrings under perl debugger.
