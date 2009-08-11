@@ -381,6 +381,10 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
       break;
   }
 
+  if (strnEQ (PL_bufptr, "->", 2)) {
+    return o;
+  }
+
   dd_linestr_callback(aTHX_ "const", name);
 
   return o;
