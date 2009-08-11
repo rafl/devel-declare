@@ -1,5 +1,12 @@
 Changes for Devel-Declare
 
+0.005010 - 11 Aug 2009
+  - Don't invoke the linestr callback if we found a keyword and the bufptr
+    still contains an arrow at its beginning. This causes the linestr callback
+    not to be fired on things like "->method" (if method is a declarator).
+    While this might be useful, it mostly caused problems so far. It might be
+    added again later as a separate feature.
+
 0.005009 - 10 Aug 2009
   - Stop mixing declarations with code. (Closes: RT#48548) (Cosimo Streppone)
   - Move strip_attrs, which is a purely parsing method, from
