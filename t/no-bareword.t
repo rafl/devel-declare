@@ -35,4 +35,6 @@ TODO: {
     }
 }
 
+is_deeply(\@foo, ['method', '123']);
+
 done_testing;
