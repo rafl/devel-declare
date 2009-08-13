@@ -22,7 +22,12 @@ BEGIN {
 Foo->method;
 BEGIN { is($i, 0) }
 
-my @foo = (method => 123);
+my @foo = (
+    method
+    =>
+    123
+);
+
 TODO: {
     BEGIN {
         local $TODO = 'fat commas not quoting barewords';
