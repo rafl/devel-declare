@@ -27,13 +27,7 @@ my @foo = (
     =>
     123
 );
-
-TODO: {
-    BEGIN {
-        local $TODO = 'fat commas not quoting barewords';
-        is($i, 0);
-    }
-}
+BEGIN { is($i, 0) }
 
 is_deeply(\@foo, ['method', '123']);
 
