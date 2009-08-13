@@ -220,7 +220,7 @@ int dd_toke_scan_str(pTHX_ int offset) {
 
 int dd_toke_skipspace(pTHX_ int offset) {
   char* base_s = SvPVX(PL_linestr) + offset;
-  char* s = skipspace(base_s);
+  char* s = skipspace_force(base_s);
   return s - base_s;
 }
 
@@ -381,8 +381,35 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
       break;
   }
 
-  if (strnEQ (PL_bufptr, "->", 2)) {
+  if (strnEQ(PL_bufptr, "->", 2)) {
     return o;
+  }
+
+  {
+    char buf[256];
+    STRLEN len;
+    char *s = PL_bufptr;
+    STRLEN old_offset = PL_bufptr - SvPVX(PL_linestr);
+
+    s = scan_word(s, buf, sizeof buf, FALSE, &len);
+    if (strnEQ(buf, name, len)) {
+      char *d;
+      SV *inject = newSVpv("", 0);
+      sv_catpvn(inject, SvPV_nolen(PL_linestr), PL_bufptr - SvPVX(PL_linestr));
+      sv_catpvn(inject, buf, len);
+
+      d = peekspace(s);
+      sv_catpvn(inject, s, d - s);
+
+      if ((PL_bufend - d) >= 2 && strnEQ(d, "=>", 2)) {
+        return o;
+      }
+
+      sv_catpv(inject, d);
+      dd_set_linestr(aTHX_ SvPV_nolen(inject));
+      PL_bufptr = SvPVX(PL_linestr) + old_offset;
+      SvREFCNT_dec (inject);
+    }
   }
 
   dd_linestr_callback(aTHX_ "const", name);

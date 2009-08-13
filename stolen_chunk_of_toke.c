@@ -19,7 +19,9 @@
 
 /* the following #defines are stolen from assorted headers, not toke.c (mst) */
 
-#define skipspace(a)            S_skipspace(aTHX_ a)
+#define skipspace(a)            S_skipspace(aTHX_ a, 0)
+#define peekspace(a)            S_skipspace(aTHX_ a, 1)
+#define skipspace_force(a)      S_skipspace(aTHX_ a, 2)
 #define incline(a)              S_incline(aTHX_ a)
 #define filter_gets(a,b,c)      S_filter_gets(aTHX_ a,b,c)
 #define scan_str(a,b,c)         S_scan_str(aTHX_ a,b,c)
@@ -27,7 +29,7 @@
 #define scan_ident(a,b,c,d,e)   S_scan_ident(aTHX_ a,b,c,d,e)
 
 STATIC void     S_incline(pTHX_ char *s);
-STATIC char*    S_skipspace(pTHX_ char *s);
+STATIC char*    S_skipspace(pTHX_ char *s, int incline);
 STATIC char *   S_filter_gets(pTHX_ SV *sv, PerlIO *fp, STRLEN append);
 STATIC char*    S_scan_str(pTHX_ char *start, int keep_quoted, int keep_delims);
 STATIC char*    S_scan_word(pTHX_ char *s, char *dest, STRLEN destlen, int allow_package, STRLEN *slp);
@@ -270,7 +272,7 @@ S_filter_gets(pTHX_ register SV *sv, register PerlIO *fp, STRLEN append)
  */
 
 STATIC char *
-S_skipspace(pTHX_ register char *s)
+S_skipspace(pTHX_ register char *s, int incline)
 {
     if (PL_lex_formbrack && PL_lex_brackets <= PL_lex_formbrack) {
 	while (s < PL_bufend && SPACE_OR_TAB(*s))
@@ -282,7 +284,7 @@ S_skipspace(pTHX_ register char *s)
 	SSize_t oldprevlen, oldoldprevlen;
 	SSize_t oldloplen = 0, oldunilen = 0;
 	while (s < PL_bufend && isSPACE(*s)) {
-	    if (*s++ == '\n' && PL_in_eval && !PL_rsfp)
+	    if (*s++ == '\n' && ((incline == 2) || PL_in_eval && !PL_rsfp && !incline))
 		incline(s);
 	}
 
@@ -292,11 +294,19 @@ S_skipspace(pTHX_ register char *s)
 		s++;
 	    if (s < PL_bufend) {
 		s++;
-		if (PL_in_eval && !PL_rsfp) {
+		if (PL_in_eval && !PL_rsfp && !incline) {
 		    incline(s);
 		    continue;
 		}
 	    }
+	}
+
+	/* also skip leading whitespace on the beginning of a line before deciding
+	 * whether or not to recharge the linestr. --rafl
+	 */
+	while (s < PL_bufend && isSPACE(*s)) {
+		if (*s++ == '\n' && PL_in_eval && !PL_rsfp && !incline)
+			incline(s);
 	}
 
 	/* only continue to recharge the buffer if we're at the end
@@ -368,7 +378,8 @@ S_skipspace(pTHX_ register char *s)
 	    PL_last_uni = s + oldunilen;
 	if (PL_last_lop)
 	    PL_last_lop = s + oldloplen;
-	incline(s);
+	if (!incline)
+		incline(s);
 
 	/* debugger active and we're not compiling the debugger code,
 	 * so store the line into the debugger's array of lines
