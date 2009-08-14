@@ -394,8 +394,7 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
     s = scan_word(s, buf, sizeof buf, FALSE, &len);
     if (strnEQ(buf, name, len)) {
       char *d;
-      SV *inject = newSVpv("", 0);
-      sv_catpvn(inject, SvPV_nolen(PL_linestr), PL_bufptr - SvPVX(PL_linestr));
+      SV *inject = newSVpvn(SvPVX(PL_linestr), PL_bufptr - SvPVX(PL_linestr));
       sv_catpvn(inject, buf, len);
 
       d = peekspace(s);
