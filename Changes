@@ -1,5 +1,11 @@
 Changes for Devel-Declare
 
+0.005011 - 14 Aug 2009
+  - Add tests for not interpreting various things as barewords when they
+    aren't.
+  - Depend on a Test::More with done_testing support.
+  - Don't invoke the const callback for a keyword followed by a fat comma.
+
 0.005010 - 11 Aug 2009
   - Don't invoke the linestr callback if we found a keyword and the bufptr
     still contains an arrow at its beginning. This causes the linestr callback
