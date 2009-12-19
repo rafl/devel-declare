@@ -97,6 +97,7 @@ sub shadow_sub {
   no strict 'refs';
   my ($pack, $pname) = ($name =~ m/(.+)::([^:]+)/);
   push(@$temp_save, $pack->can($pname));
+  delete ${ "${pack}::" }{$pname};
   no warnings 'redefine';
   no warnings 'prototype';
   *{$name} = $cr;
