@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.006000 - 09 Mar 2010
+  - Make things work on perl 5.11.2 and newer (Zefram).
+
 0.005011 - 14 Aug 2009
   - Add tests for not interpreting various things as barewords when they
     aren't.
