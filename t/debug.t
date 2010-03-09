@@ -1,7 +1,13 @@
 use strict;
 use warnings;
 
-use Test::More tests => 1;
+use Test::More;
+
+BEGIN {
+  if($] eq "5.011002") {
+    plan skip_all => "line debugging broken on 5.11.2";
+  }
+}
 
 use Cwd qw/cwd/;
 use FindBin qw/$Bin/;
@@ -25,4 +31,5 @@ my $output = `$^X -d t/debug.pl`;
 
 like($output, qr/method new {}, sub {my \$self = shift;/,
   "replaced line string visible in debug lines");
-1;
+
+done_testing;

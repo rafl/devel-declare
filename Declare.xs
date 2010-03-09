@@ -7,6 +7,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#define PERL_VERSION_DECIMAL(r,v,s) (r*1000000 + v*1000 + s)
+#define PERL_DECIMAL_VERSION \
+  PERL_VERSION_DECIMAL(PERL_REVISION,PERL_VERSION,PERL_SUBVERSION)
+#define PERL_VERSION_GE(r,v,s) \
+  (PERL_DECIMAL_VERSION >= PERL_VERSION_DECIMAL(r,v,s))
+
 #ifndef Newx
 # define Newx(v,n,t) New(0,v,n,t)
 #endif /* !Newx */
@@ -17,6 +23,8 @@
 #define DD_DEBUG_UPDATED_LINESTR (dd_debug & DD_DEBUGf_UPDATED_LINESTR)
 #define DD_DEBUG_TRACE (dd_debug & DD_DEBUGf_TRACE)
 static int dd_debug = 0;
+
+#define DD_CONST_VIA_RV2CV PERL_VERSION_GE(5,11,2)
 
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
@@ -224,41 +232,48 @@ int dd_toke_skipspace(pTHX_ int offset) {
   return s - base_s;
 }
 
+static void call_done_declare(pTHX) {
+  dSP;
+
+  if (DD_DEBUG_TRACE) {
+    printf("Deconstructing declare\n");
+    printf("PL_bufptr: %s\n", PL_bufptr);
+    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+    printf("linestr: %s\n", SvPVX(PL_linestr));
+    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+  }
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+
+  call_pv("Devel::Declare::done_declare", G_VOID|G_DISCARD);
+
+  FREETMPS;
+  LEAVE;
+
+  if (DD_DEBUG_TRACE) {
+    printf("PL_bufptr: %s\n", PL_bufptr);
+    printf("bufend at: %i\n", PL_bufend - PL_bufptr);
+    printf("linestr: %s\n", SvPVX(PL_linestr));
+    printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
+    printf("actual len: %i\n", strlen(PL_bufptr));
+  }
+}
+
+static int dd_handle_const(pTHX_ char *name);
+
 /* replacement PL_check rv2cv entry */
 
 STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
-  dSP;
   OP* kid;
   int dd_flags;
 
   PERL_UNUSED_VAR(user_data);
 
   if (in_declare) {
-    if (DD_DEBUG_TRACE) {
-      printf("Deconstructing declare\n");
-      printf("PL_bufptr: %s\n", PL_bufptr);
-      printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-      printf("linestr: %s\n", SvPVX(PL_linestr));
-      printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-    }
-
-    ENTER;
-    SAVETMPS;
-
-    PUSHMARK(SP);
-
-    call_pv("Devel::Declare::done_declare", G_VOID|G_DISCARD);
-
-    FREETMPS;
-    LEAVE;
-
-    if (DD_DEBUG_TRACE) {
-      printf("PL_bufptr: %s\n", PL_bufptr);
-      printf("bufend at: %i\n", PL_bufend - PL_bufptr);
-      printf("linestr: %s\n", SvPVX(PL_linestr));
-      printf("linestr len: %i\n", PL_bufend - SvPVX(PL_linestr));
-      printf("actual len: %i\n", strlen(PL_bufptr));
-    }
+    call_done_declare(aTHX);
     return o;
   }
 
@@ -283,6 +298,24 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
     printf("dd_flags are: %i\n", dd_flags);
     printf("PL_tokenbuf: %s\n", PL_tokenbuf);
   }
+
+#if DD_CONST_VIA_RV2CV
+  if (PL_expect != XOPERATOR) {
+    if (!dd_handle_const(aTHX_ GvNAME(kGVOP_gv)))
+      return o;
+    CopLINE(PL_curcop) = PL_copline;
+    /* The parser behaviour that we're simulating depends on what comes
+       after the declarator. */
+    if (*skipspace(PL_bufptr + strlen(GvNAME(kGVOP_gv))) != '(') {
+      if (in_declare) {
+        call_done_declare(aTHX);
+      } else {
+        dd_linestr_callback(aTHX_ "rv2cv", GvNAME(kGVOP_gv));
+      }
+    }
+    return o;
+  }
+#endif /* DD_CONST_VIA_RV2CV */
 
   dd_linestr_callback(aTHX_ "rv2cv", GvNAME(kGVOP_gv));
 
@@ -341,6 +374,57 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
   return count;
 }
 
+static int dd_handle_const(pTHX_ char *name) {
+  switch (PL_lex_inwhat) {
+    case OP_QR:
+    case OP_MATCH:
+    case OP_SUBST:
+    case OP_TRANS:
+    case OP_BACKTICK:
+    case OP_STRINGIFY:
+      return 0;
+      break;
+    default:
+      break;
+  }
+
+  if (strnEQ(PL_bufptr, "->", 2)) {
+    return 0;
+  }
+
+  {
+    char buf[256];
+    STRLEN len;
+    char *s = PL_bufptr;
+    STRLEN old_offset = PL_bufptr - SvPVX(PL_linestr);
+
+    s = scan_word(s, buf, sizeof buf, FALSE, &len);
+    if (strnEQ(buf, name, len)) {
+      char *d;
+      SV *inject = newSVpvn(SvPVX(PL_linestr), PL_bufptr - SvPVX(PL_linestr));
+      sv_catpvn(inject, buf, len);
+
+      d = peekspace(s);
+      sv_catpvn(inject, s, d - s);
+
+      if ((PL_bufend - d) >= 2 && strnEQ(d, "=>", 2)) {
+        return 0;
+      }
+
+      sv_catpv(inject, d);
+      dd_set_linestr(aTHX_ SvPV_nolen(inject));
+      PL_bufptr = SvPVX(PL_linestr) + old_offset;
+      SvREFCNT_dec (inject);
+    }
+  }
+
+  dd_linestr_callback(aTHX_ "const", name);
+
+  return 1;
+}
+
+#if !DD_CONST_VIA_RV2CV
+
 STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
   int dd_flags;
   char* name;
@@ -368,53 +452,12 @@ STATIC OP *dd_ck_const(pTHX_ OP *o, void *user_data) {
   if (dd_flags == -1)
     return o;
 
-  switch (PL_lex_inwhat) {
-    case OP_QR:
-    case OP_MATCH:
-    case OP_SUBST:
-    case OP_TRANS:
-    case OP_BACKTICK:
-    case OP_STRINGIFY:
-      return o;
-      break;
-    default:
-      break;
-  }
-
-  if (strnEQ(PL_bufptr, "->", 2)) {
-    return o;
-  }
-
-  {
-    char buf[256];
-    STRLEN len;
-    char *s = PL_bufptr;
-    STRLEN old_offset = PL_bufptr - SvPVX(PL_linestr);
-
-    s = scan_word(s, buf, sizeof buf, FALSE, &len);
-    if (strnEQ(buf, name, len)) {
-      char *d;
-      SV *inject = newSVpvn(SvPVX(PL_linestr), PL_bufptr - SvPVX(PL_linestr));
-      sv_catpvn(inject, buf, len);
-
-      d = peekspace(s);
-      sv_catpvn(inject, s, d - s);
-
-      if ((PL_bufend - d) >= 2 && strnEQ(d, "=>", 2)) {
-        return o;
-      }
-
-      sv_catpv(inject, d);
-      dd_set_linestr(aTHX_ SvPV_nolen(inject));
-      PL_bufptr = SvPVX(PL_linestr) + old_offset;
-      SvREFCNT_dec (inject);
-    }
-  }
-
-  dd_linestr_callback(aTHX_ "const", name);
+  dd_handle_const(aTHX_ name);
 
   return o;
 }
+
+#endif /* !DD_CONST_VIA_RV2CV */
 
 static int initialized = 0;
 
@@ -428,7 +471,9 @@ setup()
   if (!initialized++) {
     hook_op_check(OP_RV2CV, dd_ck_rv2cv, NULL);
     hook_op_check(OP_ENTEREVAL, dd_ck_entereval, NULL);
+#if !DD_CONST_VIA_RV2CV
     hook_op_check(OP_CONST, dd_ck_const, NULL);
+#endif /* !DD_CONST_VIA_RV2CV */
   }
   filter_add(dd_filter_realloc, NULL);
 
