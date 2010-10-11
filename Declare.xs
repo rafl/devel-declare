@@ -211,11 +211,11 @@ int dd_toke_scan_ident(pTHX_ int offset) {
     return s - base_s;
 }
 
-int dd_toke_scan_str(pTHX_ int offset) {
+int dd_toke_scan_str(pTHX_ int offset, int keep_quoted, int keep_delims) {
   STRLEN remaining = sv_len(PL_linestr) - offset;
   SV* line_copy = newSVsv(PL_linestr);
   char* base_s = SvPVX(PL_linestr) + offset;
-  char* s = scan_str(base_s, FALSE, FALSE);
+  char* s = scan_str(base_s, keep_quoted, keep_delims);
   if (s != base_s && sv_len(PL_lex_stuff) > remaining) {
     int ret = (s - SvPVX(PL_linestr)) + remaining;
     sv_catsv(line_copy, PL_linestr);
@@ -532,7 +532,14 @@ toke_move_past_token(int offset);
 int
 toke_scan_str(int offset);
   CODE:
-    RETVAL = dd_toke_scan_str(aTHX_ offset);
+    RETVAL = dd_toke_scan_str(aTHX_ offset, FALSE, FALSE);
+  OUTPUT:
+    RETVAL
+
+int
+toke_scan_str_flags(int offset, int keep_quoted, int keep_delims);
+  CODE:
+    RETVAL = dd_toke_scan_str(aTHX_ offset, keep_quoted, keep_delims);
   OUTPUT:
     RETVAL
 

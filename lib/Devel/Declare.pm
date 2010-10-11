@@ -516,6 +516,18 @@ Also it Does The Right Thing with nested delimiters (like C<q(this (is (a) quote
 It returns the length of the expression matched.  Use C<get_lex_stuff> to
 get the actual matched text.
 
+=head4 C<toke_scan_str_flags>
+
+This builtin parser uses the same underlying perl function as C<toke_scan_str>, but takes
+two additional boolean (1 or 0) options. The first, if set to true, preserves the backslashes
+on embedded delimiters. The second preserves the delimiters around the string.
+Both are set to false by C<toke_scan_str>. These flags can be useful when roundtripping
+or quoting "stringlikes".
+
+    my $backslashed_length = Devel::Declare::toke_scan_str_flags($offset, 1, 0);
+    my $delimited_length   = Devel::Declare::toke_scan_str_flags($offset, 0, 1);
+    my $verbatim_length    = Devel::Declare::toke_scan_str_flags($offset, 1, 1);
+
 =head4 C<get_lex_stuff>
 
 This builtin returns what was matched by C<toke_scan_str>.  To avoid segfaults,
