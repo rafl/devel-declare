@@ -143,7 +143,7 @@ void dd_set_linestr(pTHX_ char* new_value) {
   PL_bufend = SvPVX(PL_linestr) + new_len;
 
   if ( DD_DEBUG_UPDATED_LINESTR && PERLDB_LINE && PL_curstash != PL_debstash) {
-    // Cribbed from toke.c
+    /* Cribbed from toke.c */
     SV * const sv = NEWSV(85,0);
 
     sv_upgrade(sv, SVt_PVMG);
@@ -211,11 +211,11 @@ int dd_toke_scan_ident(pTHX_ int offset) {
     return s - base_s;
 }
 
-int dd_toke_scan_str(pTHX_ int offset) {
+int dd_toke_scan_str(pTHX_ int offset, int keep_delimiters, int keep_escapes) {
   STRLEN remaining = sv_len(PL_linestr) - offset;
   SV* line_copy = newSVsv(PL_linestr);
   char* base_s = SvPVX(PL_linestr) + offset;
-  char* s = scan_str(base_s, FALSE, FALSE);
+  char* s = scan_str(base_s, keep_escapes, keep_delimiters); /* different argument order */
   if (s != base_s && sv_len(PL_lex_stuff) > remaining) {
     int ret = (s - SvPVX(PL_linestr)) + remaining;
     sv_catsv(line_copy, PL_linestr);
@@ -530,11 +530,30 @@ toke_move_past_token(int offset);
     RETVAL
 
 int
-toke_scan_str(int offset);
-  CODE:
-    RETVAL = dd_toke_scan_str(aTHX_ offset);
-  OUTPUT:
-    RETVAL
+toke_scan_str(int offset, ...);
+    PROTOTYPE: $;%
+    PREINIT:
+        int keep_delimiters = 0;
+        int keep_escapes = 0;
+    CODE:
+        if (items > 1) {
+            int i;
+            for (i = 1; i < items; i += 2) {
+                STRLEN keylen;
+                const char * key = SvPV(ST(i), keylen);
+
+                if (strnEQ(key, "keep_delimiters", keylen)) {
+                    keep_delimiters = SvTRUE(ST(i + 1));
+                } else if (strnEQ(key, "keep_escapes", keylen)) {
+                    keep_escapes = SvTRUE(ST(i + 1));
+                } else {
+                    warn("unrecognized option: %s", key);
+                }
+            }
+        }
+        RETVAL = dd_toke_scan_str(aTHX_ offset, keep_delimiters, keep_escapes);
+   OUTPUT:
+        RETVAL
 
 int
 toke_scan_ident(int offset)
