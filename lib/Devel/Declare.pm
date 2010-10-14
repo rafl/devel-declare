@@ -524,12 +524,12 @@ and an optional list of key/value pairs containing one or more of the following 
 =item * keep_delimiters
 
 If set to a true value, the quoted string is extracted with its quotation marks/delimiters
-intact. e.g. all five characters of C<'foo'> and all seven characters of C<qq{bar}> are extracted.
+preserved. e.g. all five characters of C<'foo'>.
 
 =item * keep_escapes
 
 If set to a true value, the quoted string is extracted with any backslashes
-used to escape embedded delimiters intact e.g. "foo \"bar\" baz" is extracted as
+used to escape embedded delimiters preserved e.g. "foo \"bar\" baz" is extracted as
 the equivalent of C<q{foo \\"bar\\" baz}> rather than C<q{foo "bar" baz}>.
 
 =back
@@ -540,6 +540,9 @@ These flags can be useful when roundtripping or quoting "stringlikes".
     my $escaped_length   = Devel::Declare::toke_scan_str($offset, keep_escapes => 1);
     my $delimited_length = Devel::Declare::toke_scan_str($offset, keep_delimiters => 1);
     my $verbatim_length  = Devel::Declare::toke_scan_str($offset, keep_escapes => 1, keep_delimiters => 1);
+
+Note that C<toke_scan_str> doesn't consume tokens used by quote-like operators such as C<q> and C<qq>. These
+must be handled separately. e.g. with L<"strip_name">.
 
 =head4 C<get_lex_stuff>
 
