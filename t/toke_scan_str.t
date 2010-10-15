@@ -3,7 +3,7 @@ use warnings;
 
 use Devel::Declare ();
 use Devel::Declare::Context::Simple;
-use Test::More tests => 10;
+use Test::More tests => 12;
 
 our @RESULTS;
 
@@ -59,35 +59,41 @@ sub parser_common {
 
     Devel::Declare::clear_lex_stuff;
 
-    push @RESULTS, $quote;
+    push @RESULTS, [ $quote, $length ];
 }
 
-defaultQuote 'foo bar baz';
-is(shift(@RESULTS), q{foo bar baz});
+# note: length is the number of characters in the source code
+# e.g. 13 for 'foo bar baz' and 17 for "foo \"bar\" baz"
 
+defaultQuote 'foo bar baz';
+is_deeply(shift(@RESULTS), [ q{foo bar baz}, 13 ]);
 defaultQuote "foo \"bar\" baz";
-is(shift(@RESULTS), q{foo "bar" baz});
+is_deeply(shift(@RESULTS), [ q{foo "bar" baz}, 17 ]);
 
 defaultsQuote 'foo bar baz';
-is(shift(@RESULTS), q{foo bar baz});
-
+is_deeply(shift(@RESULTS), [ q{foo bar baz}, 13 ]);
 defaultsQuote "foo \"bar\" baz";
-is(shift(@RESULTS), q{foo "bar" baz});
+is_deeply(shift(@RESULTS), [ q{foo "bar" baz}, 17 ]);
 
 keepDelimitersQuote 'foo bar baz';
-is(shift(@RESULTS), q{'foo bar baz'});
-
+is_deeply(shift(@RESULTS), [ q{'foo bar baz'}, 13 ]);
 keepDelimitersQuote "foo \"bar\" baz";
-is(shift(@RESULTS), q{"foo "bar" baz"});
+is_deeply(shift(@RESULTS), [ q{"foo "bar" baz"}, 17 ]);
 
 keepEscapesQuote 'foo bar baz';
-is(shift(@RESULTS), q{foo bar baz});
-
+is_deeply(shift(@RESULTS), [ q{foo bar baz}, 13 ]);
 keepEscapesQuote "foo \"bar\" baz";
-is(shift(@RESULTS), q{foo \\"bar\\" baz});
+is_deeply(shift(@RESULTS), [ q{foo \\"bar\\" baz}, 17 ]);
 
 verbatimQuote 'foo bar baz';
-is(shift(@RESULTS), q{'foo bar baz'});
-
+is_deeply(shift(@RESULTS), [ q{'foo bar baz'}, 13 ]);
 verbatimQuote "foo \"bar\" baz";
-is(shift(@RESULTS), q{"foo \\"bar\\" baz"});
+is_deeply(shift(@RESULTS), [ q{"foo \\"bar\\" baz"}, 17 ]);
+
+# lex_get_stuff is unreliable on failure - only the length result is documented, so just test that
+BEGIN { eval 'defaultQuote q{foo bar baz};'; }
+is_deeply(shift(@RESULTS), [ '', -1 ]);
+
+# make sure the example in the documentation is correct
+verbatimQuote "\\foo\"";
+is_deeply(shift(@RESULTS), [ q{"\\\\foo\\""}, 9 ]);

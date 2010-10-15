@@ -216,7 +216,9 @@ int dd_toke_scan_str(pTHX_ int offset, int keep_delimiters, int keep_escapes) {
   SV* line_copy = newSVsv(PL_linestr);
   char* base_s = SvPVX(PL_linestr) + offset;
   char* s = scan_str(base_s, keep_escapes, keep_delimiters); /* different argument order */
-  if (s != base_s && sv_len(PL_lex_stuff) > remaining) {
+  if (s == Nullch) {
+      return -1;
+  } else if (s != base_s && sv_len(PL_lex_stuff) > remaining) {
     int ret = (s - SvPVX(PL_linestr)) + remaining;
     sv_catsv(line_copy, PL_linestr);
     dd_set_linestr(aTHX_ SvPV_nolen(line_copy));

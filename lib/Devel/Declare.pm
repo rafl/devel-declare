@@ -513,8 +513,12 @@ things like C<q(this is a quote)>).
 
 Also it Does The Right Thing with nested delimiters (like C<q(this (is (a) quote))>).
 
-It returns the length of the expression matched.  Use C<get_lex_stuff> to
-get the actual matched text.
+It returns the length of the expression matched, or -1 if it can't be parsed.
+The returned length refers to the number of characters scanned in the source code,
+including delimiters, escaped characters and escaping characters - so scanning
+"\\foo\"" would return 9.
+
+C<get_lex_stuff> returns the actual matched text after a successful match.
 
 C<toke_scan_str> takes an offset indicating the point at which the scan should start,
 and an optional list of key/value pairs containing one or more of the following options:
@@ -523,14 +527,14 @@ and an optional list of key/value pairs containing one or more of the following 
 
 =item * keep_delimiters
 
-If set to a true value, the quoted string is extracted with its quotation marks/delimiters
-preserved. e.g. all five characters of C<'foo'>.
+If set to a true value, the quoted string is extracted (i.e. returned by C<get_lex_stuff>)
+with its quotation marks/delimiters preserved. e.g. all five characters of C<'foo'>.
 
 =item * keep_escapes
 
-If set to a true value, the quoted string is extracted with any backslashes
-used to escape embedded delimiters preserved e.g. "foo \"bar\" baz" is extracted as
-the equivalent of C<q{foo \\"bar\\" baz}> rather than C<q{foo "bar" baz}>.
+If set to a true value, the quoted string is extracted (and returned by C<lex_get_stuff>)
+with any backslashes used to escape embedded delimiters preserved e.g. "foo \"bar\" baz"
+is extracted as the equivalent of C<q{foo \\"bar\\" baz}> rather than C<q{foo "bar" baz}>.
 
 =back
 
@@ -541,7 +545,7 @@ These flags can be useful when roundtripping or quoting "stringlikes".
     my $delimited_length = Devel::Declare::toke_scan_str($offset, keep_delimiters => 1);
     my $verbatim_length  = Devel::Declare::toke_scan_str($offset, keep_escapes => 1, keep_delimiters => 1);
 
-Note that C<toke_scan_str> doesn't consume tokens used by quote-like operators such as C<q> and C<qq>. These
+Note that C<toke_scan_str> doesn't consume tokens used by quote-like operators such as C<q> and C<qw>. These
 must be handled separately. e.g. with L<"strip_name">.
 
 =head4 C<get_lex_stuff>
