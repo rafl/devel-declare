@@ -532,7 +532,7 @@ with its quotation marks/delimiters preserved. e.g. all five characters of C<'fo
 
 =item * keep_escapes
 
-If set to a true value, the quoted string is extracted (and returned by C<lex_get_stuff>)
+If set to a true value, the quoted string is extracted (and returned by C<get_lex_stuff>)
 with any backslashes used to escape embedded delimiters preserved e.g. "foo \"bar\" baz"
 is extracted as the equivalent of C<q{foo \\"bar\\" baz}> rather than C<q{foo "bar" baz}>.
 
