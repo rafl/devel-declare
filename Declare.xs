@@ -538,7 +538,7 @@ toke_scan_str(int offset, ...);
     CODE:
         if (items > 1) {
             int i;
-            for (i = 1; i < items; i += 2) {
+            for (i = 1; (i + 1) < items; i += 2) {
                 STRLEN keylen;
                 const char * key = SvPV(ST(i), keylen);
 
