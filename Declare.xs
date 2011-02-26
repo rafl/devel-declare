@@ -26,6 +26,8 @@ static int dd_debug = 0;
 
 #define DD_CONST_VIA_RV2CV PERL_VERSION_GE(5,11,2)
 
+#define DD_GROW_VIA_BLOCKHOOK PERL_VERSION_GE(5,13,3)
+
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
 
@@ -322,6 +324,17 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
   return o;
 }
 
+#if DD_GROW_VIA_BLOCKHOOK
+
+static void dd_block_start(pTHX_ int full)
+{
+  PERL_UNUSED_VAR(full);
+  if (SvLEN(PL_linestr) < 8192)
+    (void) lex_grow_linestr(8192);
+}
+
+#else /* !DD_GROW_VIA_BLOCKHOOK */
+
 OP* dd_pp_entereval(pTHX) {
   dSP;
   STRLEN len;
@@ -373,6 +386,8 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
   /* filter_del(dd_filter_realloc); */
   return count;
 }
+
+#endif /* !DD_GROW_VIA_BLOCKHOOK */
 
 static int dd_handle_const(pTHX_ char *name) {
   switch (PL_lex_inwhat) {
@@ -469,13 +484,25 @@ void
 setup()
   CODE:
   if (!initialized++) {
-    hook_op_check(OP_RV2CV, dd_ck_rv2cv, NULL);
+#if DD_GROW_VIA_BLOCKHOOK
+    static BHK bhk;
+#if PERL_VERSION_GE(5,13,6)
+    BhkENTRY_set(&bhk, bhk_start, dd_block_start);
+#else /* <5.13.6 */
+    BhkENTRY_set(&bhk, start, dd_block_start);
+#endif /* <5.13.6 */
+    Perl_blockhook_register(aTHX_ &bhk);
+#else /* !DD_GROW_VIA_BLOCKHOOK */
     hook_op_check(OP_ENTEREVAL, dd_ck_entereval, NULL);
+#endif /* !DD_GROW_VIA_BLOCKHOOK */
+    hook_op_check(OP_RV2CV, dd_ck_rv2cv, NULL);
 #if !DD_CONST_VIA_RV2CV
     hook_op_check(OP_CONST, dd_ck_const, NULL);
 #endif /* !DD_CONST_VIA_RV2CV */
   }
+#if !DD_GROW_VIA_BLOCKHOOK
   filter_add(dd_filter_realloc, NULL);
+#endif /* !DD_GROW_VIA_BLOCKHOOK */
 
 char*
 get_linestr()
