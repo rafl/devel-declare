@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.006002 - 08 Apr 2011
+  - Re-add Support for very early growing of PL_linestr using filters (Zefram).
+
 0.006001 - 26 Feb 2011
   - Support perl >= 5.13.7 by re-allocating PL_linestr in block hooks (Zefram).
 
