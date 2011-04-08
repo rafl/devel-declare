@@ -379,6 +379,8 @@ STATIC OP *dd_ck_entereval(pTHX_ OP *o, void *user_data) {
   return o;
 }
 
+#endif /* !DD_GROW_VIA_BLOCKHOOK */
+
 static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
 {
   const I32 count = FILTER_READ(idx+1, sv, maxlen);
@@ -386,8 +388,6 @@ static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
   /* filter_del(dd_filter_realloc); */
   return count;
 }
-
-#endif /* !DD_GROW_VIA_BLOCKHOOK */
 
 static int dd_handle_const(pTHX_ char *name) {
   switch (PL_lex_inwhat) {
@@ -500,9 +500,7 @@ setup()
     hook_op_check(OP_CONST, dd_ck_const, NULL);
 #endif /* !DD_CONST_VIA_RV2CV */
   }
-#if !DD_GROW_VIA_BLOCKHOOK
   filter_add(dd_filter_realloc, NULL);
-#endif /* !DD_GROW_VIA_BLOCKHOOK */
 
 char*
 get_linestr()
