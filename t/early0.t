@@ -3,6 +3,7 @@ use warnings;
 use Test::More tests => 1;
 BEGIN {
     require Devel::Declare;
+    *class = sub (&) { $_[0]->() };
     Devel::Declare->setup_for(__PACKAGE__, {
         class => {
             const => sub {
@@ -13,9 +14,6 @@ BEGIN {
                 my $l = Devel::Declare::get_linestr();
                 substr $l, $off + 1, 0, 'pass q[injected];' . (';' x 1000);
                 Devel::Declare::set_linestr($l);
-                my $class = sub (&) { $_[0]->() };
-                no strict 'refs';
-                *{ $kw } = $class;
             },
         },
     });

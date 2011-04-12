@@ -4,6 +4,8 @@ use warnings;
 sub import {
     require Devel::Declare;
     my $caller = caller();
+    no strict 'refs';
+    *{ "${caller}::class" } = sub (&) { $_[0]->() };
     Devel::Declare->setup_for($caller, {
         class => {
             const => sub {
@@ -14,9 +16,6 @@ sub import {
                 my $l = Devel::Declare::get_linestr();
                 substr $l, $off + 1, 0, 'pass q[injected];' . (';' x 1000);
                 Devel::Declare::set_linestr($l);
-                my $class = sub (&) { $_[0]->() };
-                no strict 'refs';
-                *{ "${caller}::$kw" } = $class;
             },
         },
     });
