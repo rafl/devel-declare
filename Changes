@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.006003 - 12 Apr 2011
+  - Fix test-failures on old perl versions (Zefram).
+
 0.006002 - 08 Apr 2011
   - Re-add Support for very early growing of PL_linestr using filters (Zefram).
 

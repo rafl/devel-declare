@@ -7,7 +7,7 @@ use Sub::Name;
 use strict;
 use warnings;
 
-our $VERSION = '0.006002';
+our $VERSION = '0.006003';
 
 sub install_methodhandler {
   my $class = shift;
