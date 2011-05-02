@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.006004 - 02 May 2011
+  - Bail out earlier when being called while not lexing (Zefram).
+  - Make sure we continue working with Devel::CallParser loaded (Zefram).
+
 0.006003 - 12 Apr 2011
   - Fix test-failures on old perl versions (Zefram).
 
