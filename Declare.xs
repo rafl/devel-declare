@@ -274,6 +274,9 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
 
   PERL_UNUSED_VAR(user_data);
 
+  if (!DD_AM_LEXING)
+    return o; /* not lexing? */
+
   if (in_declare) {
     call_done_declare(aTHX);
     return o;
@@ -283,9 +286,6 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
 
   if (kid->op_type != OP_GV) /* not a GV so ignore */
     return o;
-
-  if (!DD_AM_LEXING)
-    return o; /* not lexing? */
 
   if (DD_DEBUG_TRACE) {
     printf("Checking GV %s -> %s\n", HvNAME(GvSTASH(kGVOP_gv)), GvNAME(kGVOP_gv));
