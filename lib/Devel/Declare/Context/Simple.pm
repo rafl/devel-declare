@@ -13,7 +13,7 @@ sub new {
 
 sub init {
   my $self = shift;
-  @{$self}{ qw(Declarator Offset) } = @_;
+  @{$self}{ qw(Declarator Offset WarningOnRedefined) } = @_;
   return $self;
 }
 
@@ -30,6 +30,11 @@ sub inc_offset {
 sub declarator {
   my $self = shift;
   return $self->{Declarator}
+}
+
+sub warning_on_redefine {
+  my $self = shift;
+  return $self->{WarningOnRedefined}
 }
 
 sub skip_declarator {
