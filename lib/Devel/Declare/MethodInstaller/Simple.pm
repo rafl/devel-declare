@@ -17,10 +17,11 @@ sub install_methodhandler {
     *{$args{into}.'::'.$args{name}}   = sub (&) {};
   }
 
+  my $warnings = warnings::enabled("redefine");
   my $ctx = $class->new(%args);
   Devel::Declare->setup_for(
     $args{into},
-    { $args{name} => { const => sub { $ctx->parser(@_) } } }
+    { $args{name} => { const => sub { $ctx->parser(@_, $warnings) } } }
   );
 }
 
@@ -35,7 +36,11 @@ sub code_for {
       my $code = shift;
       # So caller() gets the subroutine name
       no strict 'refs';
-      *{$name} = subname $name => $code;
+      my $installer = $self->warning_on_redefine
+          ? sub { *{$name} = subname $name => $code; }
+          : sub { no warnings 'redefine';
+                  *{$name} = subname $name => $code; };
+      $installer->();
       return;
     };
   } else {
