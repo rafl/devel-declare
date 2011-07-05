@@ -21,6 +21,7 @@ configure_requires 'ExtUtils::Depends' => 0.302;
 configure_requires 'B::Hooks::OP::Check' => '0.18';
 
 test_requires 'Test::More' => '0.88';
+test_requires 'Test::Warn';
 
 repository 'git://github.com/rafl/devel-declare.git';
 
