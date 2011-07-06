@@ -1,5 +1,9 @@
 Changes for Devel-Declare
 
+0.006005 - 06 Jul 2011
+  - Add a flag for controlling 'redefined' warnings when installing subs into
+    namespaces (clkao).
+
 0.006004 - 02 May 2011
   - Bail out earlier when being called while not lexing (Zefram).
   - Make sure we continue working with Devel::CallParser loaded (Zefram).
