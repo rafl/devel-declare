@@ -1,5 +1,8 @@
 Changes for Devel-Declare
 
+0.006006 - 23 Aug 2011
+  - Increase default linestr size to avoid reallocations (Zefram).
+
 0.006005 - 06 Jul 2011
   - Add a flag for controlling 'redefined' warnings when installing subs into
     namespaces (clkao).
