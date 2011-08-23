@@ -31,6 +31,10 @@ static int dd_debug = 0;
 #define LEX_NORMAL    10
 #define LEX_INTERPNORMAL   9
 
+/* please try not to have a line longer than this :) */
+
+#define DD_PREFERRED_LINESTR_SIZE 16384
+
 /* flag to trigger removal of temporary declaree sub */
 
 static int in_declare = 0;
@@ -229,8 +233,12 @@ int dd_toke_scan_str(pTHX_ int offset) {
 }
 
 int dd_toke_skipspace(pTHX_ int offset) {
+  char* old_pvx = SvPVX(PL_linestr);
   char* base_s = SvPVX(PL_linestr) + offset;
   char* s = skipspace_force(base_s);
+  if(SvPVX(PL_linestr) != old_pvx)
+    croak("PL_linestr reallocated during skipspace, "
+      "Devel::Declare can't continue");
   return s - base_s;
 }
 
@@ -329,8 +337,8 @@ STATIC OP *dd_ck_rv2cv(pTHX_ OP *o, void *user_data) {
 static void dd_block_start(pTHX_ int full)
 {
   PERL_UNUSED_VAR(full);
-  if (SvLEN(PL_linestr) < 8192)
-    (void) lex_grow_linestr(8192);
+  if (SvLEN(PL_linestr) < DD_PREFERRED_LINESTR_SIZE)
+    (void) lex_grow_linestr(DD_PREFERRED_LINESTR_SIZE);
 }
 
 #else /* !DD_GROW_VIA_BLOCKHOOK */
@@ -360,7 +368,7 @@ OP* dd_pp_entereval(pTHX) {
         sv = sv_2mortal(newSVsv(sv));
       sv_catpvn(sv, "\n;", 2);
     }
-    SvGROW(sv, 8192);
+    SvGROW(sv, DD_PREFERRED_LINESTR_SIZE);
   }
   PUSHs(sv);
 #ifdef PERL_5_9_PLUS
@@ -384,7 +392,7 @@ STATIC OP *dd_ck_entereval(pTHX_ OP *o, void *user_data) {
 static I32 dd_filter_realloc(pTHX_ int idx, SV *sv, int maxlen)
 {
   const I32 count = FILTER_READ(idx+1, sv, maxlen);
-  SvGROW(sv, 8192); /* please try not to have a line longer than this :) */
+  SvGROW(sv, DD_PREFERRED_LINESTR_SIZE);
   /* filter_del(dd_filter_realloc); */
   return count;
 }
