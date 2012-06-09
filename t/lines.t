@@ -6,7 +6,7 @@ BEGIN {
   eval 'use B::Compiling';
 
   $@ and plan 'skip_all' => $@
-      or plan tests => 5;
+      or plan tests => 9;
 }
 
 my @lines;
@@ -45,8 +45,24 @@ my $line2 = __LINE__;
 
 # Reset the line number back to what it actually is
 #line 48
-is(@lines, 2, "2 line numbers recorded");
-is $lines[0], 100, "fun starts on line 100";
-is $lines[1], 101, "fun stops on line 101";
+is(@lines, 4, "4 line numbers recorded");
+is $lines[0], 100, "fun 1 starts on line 100";
+is $lines[1], 101, "fun 1 stops on line 101";
 is $line, 102, "next statement on line 102";
 is $line2, 103, "next statement on line 103";
+
+
+# Try harder
+#line 199
+0,
+fun
+{ };
+my $line3 = __LINE__;
+my $line4 = __LINE__;
+
+# Reset the line number back to what it actually is
+#line 65
+is $lines[2], 200, "fun 2 starts on line 200";
+is $lines[3], 201, "fun 2 stops on line 201";
+is $line3, 202, "next statement on line 202";
+is $line4, 203, "next statement on line 203";
