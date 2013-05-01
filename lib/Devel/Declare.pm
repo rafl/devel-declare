@@ -516,6 +516,34 @@ Also it Does The Right Thing with nested delimiters (like C<q(this (is (a) quote
 It returns the length of the expression matched.  Use C<get_lex_stuff> to
 get the actual matched text.
 
+C<toke_scan_str> takes an offset indicating the point at which the scan should start,
+and an optional list of key/value pairs containing one or more of the following options:
+
+=over
+
+=item * keep_delimiters
+
+If set to a true value, the quoted string is extracted with its quotation marks/delimiters
+preserved. e.g. all five characters of C<'foo'>.
+
+=item * keep_escapes
+
+If set to a true value, the quoted string is extracted with any backslashes
+used to escape embedded delimiters preserved e.g. "foo \"bar\" baz" is extracted as
+the equivalent of C<q{foo \\"bar\\" baz}> rather than C<q{foo "bar" baz}>.
+
+=back
+
+These flags can be useful when roundtripping or quoting "stringlikes".
+
+    my $length           = Devel::Declare::toke_scan_str($offset);
+    my $escaped_length   = Devel::Declare::toke_scan_str($offset, keep_escapes => 1);
+    my $delimited_length = Devel::Declare::toke_scan_str($offset, keep_delimiters => 1);
+    my $verbatim_length  = Devel::Declare::toke_scan_str($offset, keep_escapes => 1, keep_delimiters => 1);
+
+Note that C<toke_scan_str> doesn't consume tokens used by quote-like operators such as C<q> and C<qq>. These
+must be handled separately. e.g. with L<"strip_name">.
+
 =head4 C<get_lex_stuff>
 
 This builtin returns what was matched by C<toke_scan_str>.  To avoid segfaults,
